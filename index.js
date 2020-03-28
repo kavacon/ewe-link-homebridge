@@ -25,7 +25,7 @@ function EweLink(log, config, api) {
     this.api = api;
     this.accessories = new Map();
 
-    this.api.on('didFinishLaunching', finished(platform).bind(this))
+    this.api.on('didFinishLaunching', finished(platform))
 
 }
 function finished(platform){
@@ -41,6 +41,8 @@ async function apiDidFinishLaunching(platform){
     });
     
     const devices = await connection.getDevices();
+    let devicesToKeep = [];
+
     platform.log("Devices returned by ewe link are:");
     platform.log(devices);
 
@@ -51,6 +53,7 @@ async function apiDidFinishLaunching(platform){
     //add and update the devices found in the ewelink connection
     devices.forEach(function (device){
         platform.apiKey = device.apiKey;
+        devicesToKeep.push(device.deviceid);
         if (platform.accessories.has(device.deviceid)){
             platform.log("Device Id [%s] already configured, updating configuration", device.deviceid);
             accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.Name, device.name);
@@ -58,7 +61,7 @@ async function apiDidFinishLaunching(platform){
             accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.Manufacturer, device.productModel);
             accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.Model, device.extra.extra.model);
             accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.FirmwareRevision, device.params.fwVersion);
-            platform.updatePowerStateCharacteristic(device.deviceid, device.switch);
+            platform.updatePowerStateCharacteristic(device.deviceid, device.params.switch);
         }
         else {
             platform.log("Device Id [%s] needs to be added, adding device", device.deviceid);
@@ -68,7 +71,7 @@ async function apiDidFinishLaunching(platform){
 
     //remove devices not in the ewelink connection
     platform.accessories.forEach(function (accessory){
-        if (!devices.has(accessory.deviceId)){
+        if (!devicesToKeep.includes(accessory.deviceId)){
             platform.log("Accessory with device Id [%s] no longer active, removing", accessory.deviceId);
             platform.removeAccessory(accessory);
         }
@@ -78,7 +81,7 @@ async function apiDidFinishLaunching(platform){
 //update the power state of an accessory from external source
 EweLink.prototype.updatePowerStateCharacteristic = function(deviceId, state){
     var platform = this;
-    const targetState = state == "on";
+    const targetState = state === "on";
     const accessory = platform.accessories.get(deviceId);
 
     platform.log("Updating Characteristic.On for accessory [%s] to [%s]", accessory.displayName, targetState);
@@ -124,16 +127,15 @@ EweLink.prototype.getPowerstate = async function(accessory, callback){
         region: platform.config['region'],
     });
     const device = await connection.getDevice(accessory.context.deviceId);
-
     //check the result returned is not null
     if (device){
         //check if online
-        if (device.onLine) {
+        if (device.online) {
             //record state
             accessory.reachable = true;
             platform.log("Device [%s] was found and is online", accessory.displayName)
-            platform.log("Device [%s] has state [%s]", device.name, device.switch);
-            callback(null, device.switch == "on" ? 1 : 0);
+            platform.log("Device [%s] has state [%s]", device.name, device.params.switch);
+            callback(null, device.params.switch === "on" ? 1 : 0);
         }
         else{
             accessory.reachable = false;
@@ -166,15 +168,16 @@ EweLink.prototype.addAccessory = function(device){
 
     else{
         platform.log("Found Accessory with Name : [%s], Manufacturer : [%s], Status : [%s], Is Online : [%s], API Key: [%s] "
-            , device.name, device.productModel, device.switch, device.onLine, device.apikey);
+            , device.name, device.productModel, device.params.switch, device.online, device.apikey);
 
         //create and configure the accessory
         const accessory = new Accessory(device.name, UUIDGen.generate(device.deviceid.toString()))
+        platform.log(UUIDGen.generate(device.deviceid.toString()));
         accessory.context.deviceId = device.deviceid;
         accessory.context.apiKey = device.apikey;
-        accessory.reachable = device.onLine;
+        accessory.reachable = device.online;
 
-        accessory.addService(Service.switch, device.name)
+        accessory.addService(Service.Switch, device.name)
             .getCharacteristic(Characteristic.On)
             .on('set', async function (value, callback){ await platform.setPowerState(accessory, value, callback);})
             .on('get', async function (callback){await platform.getPowerstate(accessory, callback);});
