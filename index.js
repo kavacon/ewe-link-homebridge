@@ -3,7 +3,7 @@ let Accessory, Service, Characteristic, UUIDGen;
 
 // homebridge entry function, will allow plugin to register with the server
 module.exports = function(homebridge) {
-    Accessory = homebridge.platformAccessoryConstructor;
+    Accessory = homebridge.platformAccessory;
     Service = homebridge.hap.Service;
     Characteristic = homebridge.hap.Characteristic;
     UUIDGen = homebridge.hap.uuid;
@@ -25,17 +25,19 @@ function EweLink(log, config, api) {
     this.api = api;
     this.accessories = new Map();
 
-    this.api.on('didFinishLaunching', apiDidFinishLaunching(platform))
+    this.api.on('didFinishLaunching', finished(platform).bind(this))
 
 }
-
+function finished(platform){
+    apiDidFinishLaunching(platform).then().finally();
+}
 // Retrieve accessory/device list and update accordingly
 async function apiDidFinishLaunching(platform){
     //retrieve list of devices from ewelink and homebridge cache
-    const connection = new ewelink.eWelink({
-        email: this.config['email'],
-        password: this.config['password'],
-        region: this.config['region'],
+    const connection = new ewelink({
+        email: platform.config['email'],
+        password: platform.config['password'],
+        region: platform.config['region'],
     });
     
     const devices = await connection.getDevices();
@@ -88,7 +90,7 @@ EweLink.prototype.setPowerState = async function(accessory, isOn, callback) {
     var platform = this;
     const targetState = isOn ? "on" : "off";
 
-    const connection = new ewelink.eWelink({
+    const connection = new ewelink({
         email: platform.config['email'],
         password: platform.config['password'],
         region: platform.config['region'],
@@ -116,7 +118,7 @@ EweLink.prototype.setPowerState = async function(accessory, isOn, callback) {
 EweLink.prototype.getPowerstate = async function(accessory, callback){
     var platform = this;
 
-    const connection = new ewelink.eWelink({
+    const connection = new ewelink({
         email: platform.config['email'],
         password: platform.config['password'],
         region: platform.config['region'],
