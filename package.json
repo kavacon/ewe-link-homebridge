@@ -1,5 +1,5 @@
 {
-  "name": "ewelinkhomebridge",
+  "name": "homebridge-ewelink-with-api",
   "version": "1.0.0",
   "description": "Utility package to connect ewelink devices to homebridge",
   "main": "index.js",
@@ -17,7 +17,8 @@
   "keywords": [
     "ewelink",
     "homebridge",
-    "homekit"
+    "homekit",
+    "homebridge-plugin"
   ],
   "author": "Constantinos Kavadias",
   "license": "ISC",
