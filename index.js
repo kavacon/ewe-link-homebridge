@@ -12,49 +12,11 @@ module.exports = function(homebridge) {
 
 }
 
-/*********************************** Ewelink functions ********************************/
-//get connection to ewelink
-async function getConnection(){
-    const connection = new ewelink({
-        email: this.config['email'],
-        password: this.config['password'],
-        region: this.config['region'],
-    });
-
-    return connection;
-}
-//get devices
-EweLink.prototype.getDeviceList = async function() {
-    const devices = await getConnection().getDevices();
-    return devices;
-}
-
-//get specific device
-EweLink.prototype.getADevice = async function(deviceid){
-    const device = await getConnection().getDevice(deviceid);
-    return device;
-}
-
-//get specific device powerstate
-EweLink.prototype.getDevicePowerState = async function(deviceid){
-    const device = await getConnection().getDevicePowerState(deviceid);
-    return device;
-}
-
-//get specific device
-EweLink.prototype.toggleDevice = async function(deviceid){
-    const status =  await getConnection().toggleDevice(deviceid);
-    return status;
-}
-
 
 /*********************************** Homebridge functions ********************************/
 // start up the plugin
 function EweLink(log, config, api) {
     log("Ewelink bridge starting up");
-
-    //establish connection to ewelink
-
 
     //configure for external access
     var platform = this;
@@ -68,9 +30,15 @@ function EweLink(log, config, api) {
 }
 
 // Retrieve accessory/device list and update accordingly
-function apiDidFinishLaunching(platform){
+async function apiDidFinishLaunching(platform){
     //retrieve list of devices from ewelink and homebridge cache
-    const devices = platform.getDeviceList();
+    const connection = new ewelink.eWelink({
+        email: this.config['email'],
+        password: this.config['password'],
+        region: this.config['region'],
+    });
+    
+    const devices = await connection.getDevices();
     platform.log("Devices returned by ewe link are:");
     platform.log(devices);
 
@@ -116,7 +84,7 @@ EweLink.prototype.updatePowerStateCharacteristic = function(deviceId, state){
 }
 
 //set the power state (on/off) of an accessorry
-EweLink.prototype.setPowerState = function(accessory, isOn, callback) {
+EweLink.prototype.setPowerState = async function(accessory, isOn, callback) {
     var platform = this;
     const targetState = isOn ? "on" : "off";
     const currentState = platform.getDevicePowerState(accessory.context.deviceId);
@@ -124,7 +92,12 @@ EweLink.prototype.setPowerState = function(accessory, isOn, callback) {
     if(currentState){
         if (currentState.state != targetState){
             platform.log("Device state does not match target state, toggling [%s]", accessory.displayName);
-            platform.toggleDevice(accessory.context.deviceId);
+                const connection = new ewelink.eWelink({
+                    email: platform.config['email'],
+                    password: platform.config['password'],
+                    region: platform.config['region'],
+                });
+                const status = await connection.toggleDevice(accessory.context.deviceId);
         }
         else {
             platform.log("Device [%s] already in requested state", accessory.displayName);
@@ -138,10 +111,15 @@ EweLink.prototype.setPowerState = function(accessory, isOn, callback) {
 }
 
 //retrieve the power state (on/off) of the device from ewelink
-EweLink.prototype.getPowerstate = function(accessory, callback){
+EweLink.prototype.getPowerstate = async function(accessory, callback){
     var platform = this;
 
-    const device = platform.getADevice(accessory.context.deviceId);
+    const connection = new ewelink.eWelink({
+        email: platform.config['email'],
+        password: platform.config['password'],
+        region: platform.config['region'],
+    });
+    const device = await connection.getDevice(accessory.context.deviceId);
 
     //check the result returned is not null
     if (device){
@@ -194,8 +172,8 @@ EweLink.prototype.addAccessory = function(device){
 
         accessory.addService(Service.switch, device.name)
             .getCharacteristic(Characteristic.On)
-            .on('set', function (value, callback){ platform.setPowerState(accessory, value, callback);})
-            .on('get', function (callback){platform.getPowerstate(accessory, callback);});
+            .on('set', async function (value, callback){ await platform.setPowerState(accessory, value, callback);})
+            .on('get', async function (callback){await platform.getPowerstate(accessory, callback);});
 
         accessory.on('identify', function(paired, callback) {platform.log(accessory.displayName, "Identify not supported"); callback();});
         accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.SerialNumber, device.extra.extra.mac);
