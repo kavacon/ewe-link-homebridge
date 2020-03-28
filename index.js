@@ -8,7 +8,7 @@ module.exports = function(homebridge) {
     Characteristic = homebridge.hap.Characteristic;
     UUIDGen = homebridge.hap.uuid;
 
-    homebridge.registerPlatform("ewelink-homebridge", "EweLink", EweLink, true);
+    homebridge.registerPlatform("homebridge-ewelink-with-api", "EweLink", EweLink, true);
 
 }
 
@@ -171,7 +171,7 @@ EweLink.prototype.removeAccessory = function(accessory){
 
     platform.log("Removing accessory [%s]", accessory.displayName);
     platform.accessories.delete(accessory.context.deviceId);
-    platform.api.unregisterPlatformAccessories( "ewelink-homebridge", "EweLink", [accessory])
+    platform.api.unregisterPlatformAccessories("homebridge-ewelink-with-api", "EweLink", [accessory])
 }
 
 //add an accessory dynamically to the current platform
@@ -205,6 +205,6 @@ EweLink.prototype.addAccessory = function(device){
         accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.FirmwareRevision, device.params.fwVersion);
 
         platform.accessories.set(device.deviceid, accessory);
-        platform.api.registerPlatformAccessories("ewelink-homebridge", "EweLink", [accessory]);
+        platform.api.registerPlatformAccessories("homebridge-ewelink-with-api", "EweLink", [accessory]);
     }
 }
