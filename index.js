@@ -87,16 +87,18 @@ EweLink.prototype.updatePowerStateCharacteristic = function(deviceId, state){
 EweLink.prototype.setPowerState = async function(accessory, isOn, callback) {
     var platform = this;
     const targetState = isOn ? "on" : "off";
-    const currentState = platform.getDevicePowerState(accessory.context.deviceId);
+
+    const connection = new ewelink.eWelink({
+        email: platform.config['email'],
+        password: platform.config['password'],
+        region: platform.config['region'],
+    });
+
+    const currentState = await connection.getDevicePowerState(accessory.context.deviceId);
 
     if(currentState){
         if (currentState.state != targetState){
-            platform.log("Device state does not match target state, toggling [%s]", accessory.displayName);
-                const connection = new ewelink.eWelink({
-                    email: platform.config['email'],
-                    password: platform.config['password'],
-                    region: platform.config['region'],
-                });
+            platform.log("Device state does not match target state, toggling [%s]", accessory.displayName)
                 const status = await connection.toggleDevice(accessory.context.deviceId);
         }
         else {
