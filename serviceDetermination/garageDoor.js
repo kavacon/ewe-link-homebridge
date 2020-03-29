@@ -8,22 +8,27 @@ module.exports.configure = function(platformInstance, service, characteristic){
     platform.log("garage door service module configured");
 }
 
-function setState(accessory, isOn, callback){
-    const targetState = isOn ? "on" : "off";
+function setState(accessory, targetState, callback){
+    const targetServerState = targetState === Characteristic.TargetDoorState.OPEN ? "on" : "off";
 
     platform.log("Setting powerstate for accessory: [%s]", accessory.displayName);
+    platform.log("Requested state is [%s]", targetState);
+
     (async () => {
         const connection = new ewelink({
             at: platform.auth.at,
             region: platform.auth.region
         });
 
-        const currentState = await connection.getDevicePowerState(accessory.context.deviceId);
+        const serverState = await connection.getDevicePowerState(accessory.context.deviceId);
+        platform.log("Device state returned as [%s]", serverState);
 
-        if (currentState) {
-            if (currentState.state !== targetState) {
+        if (serverState) {
+            if (serverState.state !== targetServerState) {
                 platform.log("Device state does not match target state, toggling [%s]", accessory.displayName);
+                accessory.getService(Service.GarageDoorOpener).setCharacteristic(Characteristic.CurrentDoorState, targetState + 2);
                 await connection.toggleDevice(accessory.context.deviceId);
+                accessory.getService(Service.GarageDoorOpener).setCharacteristic(Characteristic.CurrentDoorState, targetState);
             } else {
                 platform.log("Device [%s] already in requested state", accessory.displayName);
             }
@@ -45,6 +50,7 @@ function getState(accessory, callback){
         });
 
         const device = await connection.getDevice(accessory.context.deviceId);
+        const state = device.params.switch === "on" ? Characteristic.TargetDoorState.OPEN : Characteristic.TargetDoorState.CLOSED;
         //check the result returned is not null
         if (device) {
             //check if online
@@ -53,7 +59,8 @@ function getState(accessory, callback){
                 accessory.reachable = true;
                 platform.log("Device [%s] was found and is online", accessory.displayName);
                 platform.log("Device [%s] has state [%s]", device.name, device.params.switch);
-                callback(null, device.params.switch === "on" ? 1 : 0);
+                callback(null, state);
+
             } else {
                 accessory.reachable = false;
                 platform.log("Device [%s] was found but is not online", accessory.displayName)
@@ -69,11 +76,12 @@ function getState(accessory, callback){
 //update the power state of an accessory from external source
 module.exports.updateCharacteristic = function(deviceId, state){
 
-    const targetState = state === "on";
+    const targetState = state === "on" ? Characteristic.TargetDoorState.OPEN : Characteristic.TargetDoorState.CLOSED;
     const accessory = platform.accessories.get(deviceId);
 
-    platform.log("Updating Characteristic.On for accessory [%s] to [%s]", accessory.displayName, targetState);
+    platform.log("Updating Characteristic.TargetDoorState for accessory [%s] to [%s]", accessory.displayName, targetState);
     accessory.getService(Service.GarageDoorOpener).setCharacteristic(Characteristic.TargetDoorState, targetState);
+    accessory.getService(Service.GarageDoorOpener).setCharacteristic(Characteristic.CurrentDoorState, targetState);
 };
 
 //set switch service on a new accessory
@@ -93,6 +101,9 @@ module.exports.configureCharacteristics = function(service, accessory){
     service.getCharacteristic(Characteristic.TargetDoorState)
         .on("set", function(value, callback){setState(accessory, value, callback);})
         .on("get", function(callback){getState(accessory, callback);});
+
+    service.getCharacteristic(Characteristic.CurrentDoorState)
+        .on("get", function(callback){getState(accessory, callback);})
 }
 
 module.exports.setOnIdentify = function(accessory){
