@@ -78,11 +78,13 @@ module.exports.updateCharacteristic = function(deviceId, state){
 
 //set switch service on a new accessory
 module.exports.addService = function(accessory, name){
+    platform.log("Configuring [%s] as a Switch service", name);
     return accessory.addService(Service.Switch, name);
 };
 
 //set switcg service on an existing accessory
 module.exports.refreshService = function(accessory){
+    platform.log("Configuring [%s] as a Switch service", accessory.displayName);
     return accessory.getService(Service.Switch)
 };
 

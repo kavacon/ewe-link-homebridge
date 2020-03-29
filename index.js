@@ -11,7 +11,7 @@
  */
 
 const ewelink = require("ewelink-api");
-const servDet = require("./serviceDetermination");
+const servDet = require("./serviceDetermination/serviceDetermination");
 let Service;
 let Accessory;
 let Characteristic;

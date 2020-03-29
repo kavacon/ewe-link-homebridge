@@ -22,17 +22,18 @@ function determineServiceType(name){
     //determine type of accessory from name
     let serviceType = serviceMap.get("default");
 
-    // for (let key in serviceMap.keys()){
-    //     if (name.toUpperCase().contains(key.toUpperCase())){
-    //         serviceType = serviceMap.get(key);
-    //     }
-    // }
+    serviceMap.forEach((value, key, map) => {
+        platform.log("Checking accessory [%s] against service key [%s]", name, key);
+        if (name.toUpperCase().includes(key.toUpperCase())){
+            serviceType = value
+            platform.log("Match for accessory [%s] against service key [%s]", name, key);
+        }
+    });
 
     return serviceType;
 }
 
 module.exports.configureAccessoryAsService = function(accessory, name){
-
     let serviceType = determineServiceType(name);
     let serviceInstance = serviceType.addService(accessory, name);
     serviceType.configureCharacteristics(serviceInstance, accessory)
