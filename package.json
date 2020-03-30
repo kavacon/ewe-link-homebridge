@@ -1,0 +1,36 @@
+{
+  "name": "homebridge-ewelink-with-api",
+  "version": "1.0.0",
+  "description": "Utility package to connect ewelink devices to homebridge",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kavacon1/ewe-link-homebridge.git"
+  },
+  "engines": {
+    "node": ">=0.12.0",
+    "homebridge": ">=0.4.53"
+  },
+  "keywords": [
+    "ewelink",
+    "homebridge",
+    "homekit",
+    "homebridge-plugin"
+  ],
+  "author": "Constantinos Kavadias",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/kavacon1/ewe-link-homebridge/issues"
+  },
+  "homepage": "https://github.com/kavacon1/ewe-link-homebridge#readme",
+  "dependencies": {
+    "ewelink-api": "^2.0.0"
+  },
+  "devDependencies": {
+    "hap-nodejs": "^0.5.7",
+    "homebridge": "^0.4.53"
+  }
+}
