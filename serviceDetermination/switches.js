@@ -13,17 +13,13 @@ function setState(accessory, isOn, callback){
 
     platform.log("Setting powerstate for accessory: [%s]", accessory.displayName);
     (async () => {
-        const connection = new ewelink({
-            at: platform.auth.at,
-            region: platform.auth.region
-        });
 
-        const currentState = await connection.getDevicePowerState(accessory.context.deviceId);
+        const currentState = await platform.connection.getDevicePowerState(accessory.context.deviceId);
 
         if (currentState) {
             if (currentState.state !== targetState) {
                 platform.log("Device state does not match target state, toggling [%s]", accessory.displayName);
-                await connection.toggleDevice(accessory.context.deviceId);
+                await platform.connection.toggleDevice(accessory.context.deviceId);
             } else {
                 platform.log("Device [%s] already in requested state", accessory.displayName);
             }
@@ -39,12 +35,8 @@ function getState(accessory, callback){
 
     platform.log("Checking powerstate for accessory: [%s]", accessory.displayName);
     (async () => {
-        const connection = new ewelink({
-            at: platform.auth.at,
-            region: platform.auth.region
-        });
 
-        const device = await connection.getDevice(accessory.context.deviceId);
+        const device = await platform.connection.getDevice(accessory.context.deviceId);
         //check the result returned is not null
         if (device) {
             //check if online

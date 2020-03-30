@@ -15,19 +15,15 @@ function setState(accessory, targetState, callback){
     platform.log("Requested state is [%s]", targetState);
 
     (async () => {
-        const connection = new ewelink({
-            at: platform.auth.at,
-            region: platform.auth.region
-        });
 
-        const serverState = await connection.getDevicePowerState(accessory.context.deviceId);
+        const serverState = await platform.connection.getDevicePowerState(accessory.context.deviceId);
         platform.log("Device state returned as [%s]", serverState);
 
         if (serverState) {
             if (serverState.state !== targetServerState) {
                 platform.log("Device state does not match target state, toggling [%s]", accessory.displayName);
                 accessory.getService(Service.GarageDoorOpener).setCharacteristic(Characteristic.CurrentDoorState, targetState + 2);
-                await connection.toggleDevice(accessory.context.deviceId);
+                await platform.connection.toggleDevice(accessory.context.deviceId);
                 accessory.getService(Service.GarageDoorOpener).setCharacteristic(Characteristic.CurrentDoorState, targetState);
             } else {
                 platform.log("Device [%s] already in requested state", accessory.displayName);
@@ -44,12 +40,8 @@ function getState(accessory, callback){
 
     platform.log("Checking powerstate for accessory: [%s]", accessory.displayName);
     (async () => {
-        const connection = new ewelink({
-            at: platform.auth.at,
-            region: platform.auth.region
-        });
 
-        const device = await connection.getDevice(accessory.context.deviceId);
+        const device = await platform.connection.getDevice(accessory.context.deviceId);
         const state = device.params.switch === "on" ? Characteristic.TargetDoorState.OPEN : Characteristic.TargetDoorState.CLOSED;
         //check the result returned is not null
         if (device) {

@@ -33,27 +33,20 @@ function EweLink(log, config, api) {
      (async () => {
         log("Ewelink bridge starting up");
 
-        //configure for external access
+        //configure native homebridge parameters for shared access
         const platform = this;
-         this.log = log;
-         this.config = config;
-         this.accessories = new Map();
-         log("Platform recorded");
-        const connection = new ewelink({
-            email: config["email"],
-            password: config["password"],
-            region: config["region"],
-        });
-        log("Connection requested");
-        this.auth = await connection.getCredentials();
-        log("Auth details received");
-         servDet.configure(this, Service, Characteristic);
+        this.log = log;
+        this.config = config;
+        this.accessories = new Map();
+
          if(api) {
              this.log("API is present");
              this.api = api;
-             this.api.on("didFinishLaunching", apiDidFinishLaunching.bind(platform));
-             apiDidFinishLaunching(platform)
+             this.api.on("didFinishLaunching", function() {apiDidFinishLaunching(platform);});
          }
+
+         //configure service determination utility
+         servDet.configure(this, Service, Characteristic);
      })();
 }
 
@@ -62,10 +55,19 @@ function apiDidFinishLaunching(platform){
     //retrieve list of devices from ewelink and homebridge cache
     platform.log("apiDidFinishLaunching callback activating");
     (async () => {
+
+        //configure ewelink connection to retrieve auth details
+        //needs to be done here to ensure auth details are present for future calls
         const connection = new ewelink({
-            at: platform.auth.at,
-            region: platform.auth.region
+            email: platform.config["email"],
+            password: platform.config["password"],
+            region: platform.config["region"],
         });
+
+        platform.log("Connection requested");
+        platform.auth = await connection.getCredentials();
+        platform.connection = connection;
+        platform.log("Auth details received");
 
         const devices = await connection.getDevices();
         let devicesToKeep = [];
@@ -103,7 +105,17 @@ function apiDidFinishLaunching(platform){
                 platform.removeAccessory(platform, accessory);
             }
         });
-    })();
+        setInterval(function (){stateCheck(platform,connection);}, 15000);
+     })();
+}
+
+//poll to test the state of accessories
+function stateCheck(platform, connection){
+    platform.accessories.forEach( async (accessory) => {
+        const response = await connection.getDevicePowerState(accessory.context.deviceId);
+        platform.log("State check for: [%s], server says [%s]", accessory.displayName, response);
+        servDet.updateCharacteristic(accessory.context.deviceId, response.state)
+    });
 }
 
 //remove an accessory from the current platform
@@ -128,7 +140,6 @@ EweLink.prototype.addAccessory = function(platform, device){
 
         //create and configure the accessory
         const accessory = new Accessory(device.name, UUIDGen.generate(device.deviceid.toString()));
-        platform.log(UUIDGen.generate(device.deviceid.toString()));
         accessory.context.deviceId = device.deviceid;
         accessory.context.apiKey = device.apikey;
         accessory.reachable = device.online;
