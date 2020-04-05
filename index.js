@@ -110,7 +110,7 @@ function apiDidFinishLaunching(platform){
         if (platform.config["isPolling"]) {
             setInterval(function () {
                 stateCheck(platform, connection);
-            }, platform.config["pollingInterval"] * 100);
+            }, platform.config["pollingInterval"] * 1000);
         }
      })();
 }
