@@ -5,7 +5,9 @@
             "platform": "EweLink",
             "email": "kavacon@icloud.com",
             "password": "",
-            "region": "cn"
+            "region": "cn",
+            "isPolling": true,
+            "pollingInterval": 15 --if isPolling is false, this is not required
         }
  * @type {module:ewelink-api}
  */
@@ -105,7 +107,11 @@ function apiDidFinishLaunching(platform){
                 platform.removeAccessory(platform, accessory);
             }
         });
-        setInterval(function (){stateCheck(platform,connection);}, 15000);
+        if (platform.config["isPolling"]) {
+            setInterval(function () {
+                stateCheck(platform, connection);
+            }, platform.config["pollingInterval"] * 100);
+        }
      })();
 }
 
