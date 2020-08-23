@@ -1,5 +1,4 @@
 let Service, Characteristic, platform;
-const ewelink = require("ewelink-api");
 
 module.exports.configure = function(platformInstance, service, characteristic){
     Service = service;

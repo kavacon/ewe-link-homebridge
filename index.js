@@ -11,9 +11,8 @@
         }
  * @type {module:ewelink-api}
  */
-
-const ewelink = require("ewelink-api");
 const servDet = require("./serviceDetermination/serviceDetermination");
+const EweLinkConnection = require("./eweLinkConnection");
 let Service;
 let Accessory;
 let Characteristic;
@@ -40,7 +39,7 @@ function EweLink(log, config, api) {
         this.log = log;
         this.config = config;
         this.accessories = new Map();
-
+        this.connection = new EweLinkConnection(this.config, this.log);
          if(api) {
              this.log("API is present");
              this.api = api;
@@ -60,18 +59,9 @@ function apiDidFinishLaunching(platform){
 
         //configure ewelink connection to retrieve auth details
         //needs to be done here to ensure auth details are present for future calls
-        const connection = new ewelink({
-            email: platform.config["email"],
-            password: platform.config["password"],
-            region: platform.config["region"],
-        });
+        await platform.connection.authenticate()
 
-        platform.log("Connection requested");
-        platform.auth = await connection.getCredentials();
-        platform.connection = connection;
-        platform.log("Auth details received");
-
-        const devices = await connection.getDevices();
+        const devices = await platform.connection.getDevices();
         let devicesToKeep = [];
 
         platform.log("Devices returned by ewe link are:");
@@ -109,7 +99,7 @@ function apiDidFinishLaunching(platform){
         });
         if (platform.config["isPolling"]) {
             setInterval(function () {
-                stateCheck(platform, connection);
+                stateCheck(platform, platform.connection);
             }, platform.config["pollingInterval"] * 1000);
         }
      })();
