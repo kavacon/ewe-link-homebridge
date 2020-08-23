@@ -11,7 +11,7 @@
         }
  * @type {module:ewelink-api}
  */
-const servDet = require("./serviceDetermination/serviceDetermination");
+const ServiceDeterminer = require("./serviceDetermination/serviceDeterminer");
 const EweLinkConnection = require("./eweLinkConnection");
 let Service;
 let Accessory;
@@ -47,7 +47,7 @@ function EweLink(log, config, api) {
          }
 
          //configure service determination utility
-         servDet.configure(this, Service, Characteristic);
+         this.servDet = new ServiceDeterminer(this, Service, Characteristic);
      })();
 }
 
@@ -59,7 +59,7 @@ function apiDidFinishLaunching(platform){
 
         //configure ewelink connection to retrieve auth details
         //needs to be done here to ensure auth details are present for future calls
-        await platform.connection.authenticate()
+        await platform.connection.authenticate();
 
         const devices = await platform.connection.getDevices();
         let devicesToKeep = [];
@@ -83,7 +83,7 @@ function apiDidFinishLaunching(platform){
                 accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.Manufacturer, device.productModel);
                 accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.Model, device.extra.extra.model);
                 accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.FirmwareRevision, device.params.fwVersion);
-                servDet.updateCharacteristic(device.deviceid, device.params.switch);
+                this.servDet.updateCharacteristic(device.deviceid, device.params.switch);
             } else {
                 platform.log("Device Id [%s] needs to be added, adding device", device.deviceid);
                 platform.addAccessory(platform, device);
@@ -110,7 +110,7 @@ function stateCheck(platform, connection){
     platform.accessories.forEach( async (accessory) => {
         const response = await connection.getDevicePowerState(accessory.context.deviceId);
         platform.log("State check for: [%s], server says [%s]", accessory.displayName, response);
-        servDet.updateCharacteristic(accessory.context.deviceId, response.state)
+        this.servDet.updateCharacteristic(accessory.context.deviceId, response.state)
     });
 }
 
@@ -140,7 +140,7 @@ EweLink.prototype.addAccessory = function(platform, device){
         accessory.context.apiKey = device.apikey;
         accessory.reachable = device.online;
 
-        servDet.configureAccessoryAsService(accessory, device.name)
+        this.servDet.configureAccessoryAsService(accessory, device.name)
 
         accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.SerialNumber, device.extra.extra.mac);
         accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.Manufacturer, device.productModel);
@@ -155,7 +155,9 @@ EweLink.prototype.addAccessory = function(platform, device){
 
 EweLink.prototype.configureAccessory = function(accessory){
     this.log("Configure Accessory: [%s]", accessory.displayName);
-    servDet.configure(this, Service, Characteristic);
-    servDet.configureExistingAccessory(accessory);
+    if (!this.servDet) {
+        this.servDet = new ServiceDeterminer(this, Service, Characteristic);
+    }
+    this.servDet.configureExistingAccessory(accessory);
     this.accessories.set(accessory.context.deviceId, accessory);
 };
