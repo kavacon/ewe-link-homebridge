@@ -7,21 +7,17 @@ class ServiceDeterminer {
         this.serviceMap = new Map();
         this.accessoryCache = new Map();
         this.fillMaps(service, characteristic, platform);
+        this.defaultType = new Switch(service, characteristic, platform)
         this.platform.log("service determination initialised");
     }
 
     fillMaps(service, characteristic, platform) {
-        fs.readdir("./serviceDetermination/serviceTypes/", (err, files) => {
-            if(err){
-                platform.log.error(err)
-            }
-            files.forEach(file => {
+        const files = fs.readdirSync("./serviceDetermination/serviceTypes/");
+        files.forEach(file => {
                 const Constructor = require("./serviceTypes/"+file);
                 const type = new Constructor(service, characteristic, platform);
                 this.serviceMap.set(type.getServiceName(), type);
             });
-        });
-        this.serviceMap.set("default", new Switch(service, characteristic, platform));
     }
 
     retrieveServiceType(name) {
@@ -39,7 +35,7 @@ class ServiceDeterminer {
     }
 
     determineServiceType(name) {
-        let serviceType = this.serviceMap.get("default");
+        let serviceType = this.defaultType;
 
         this.serviceMap.forEach((value, key) => {
             this.platform.log("Checking accessory [%s] against service key [%s]", name, key);

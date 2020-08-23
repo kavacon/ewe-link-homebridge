@@ -11,6 +11,10 @@ class Switch extends ServiceType{
         return "switch";
     }
 
+    serviceTypeAsString() {
+        return "Switch";
+    }
+
     translateServerState(device){
         return device.params.switch === "on" ? 1 : 0;
     }
@@ -34,8 +38,8 @@ class Switch extends ServiceType{
     //configure the characteristics of a switch
     configureCharacteristics(service, accessory) {
         service.getCharacteristic(this.Characteristic.On)
-            .on("set", function(value, callback){this.setState(accessory, value, callback);})
-            .on("get", function(callback){this.getState(accessory, callback);});
+            .on("set", (value, callback) => this.setState(accessory, value, callback))
+            .on("get", (callback) => this.getState(accessory, callback));
     }
 }
 

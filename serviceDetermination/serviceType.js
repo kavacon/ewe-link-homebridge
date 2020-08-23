@@ -18,6 +18,10 @@ class ServiceType {
         throw("getServiceName has not been defined, this is an invalid ServiceType")
     }
 
+    serviceTypeAsString(){
+        this.getServiceName();
+    }
+
     /**
      * Set the accessory to the target state on the server
      * @param accessory the local homebridge accessory
@@ -134,7 +138,7 @@ class ServiceType {
      * @return {Service | Service}
      */
     addService(accessory, name) {
-        this.platform.log("Configuring [%s] as a [%s] service", name, this.serviceKind);
+        this.platform.log("Configuring [%s] as a [%s] service", name, this.serviceTypeAsString());
         return accessory.addService(this.serviceKind, name);
     };
 
@@ -144,7 +148,7 @@ class ServiceType {
      * @return {DataStreamTransportManagement | Service | Service}
      */
     refreshService(accessory) {
-        this.platform.log("Configuring [%s] as a [%s] service", accessory.displayName, this.serviceKind);
+        this.platform.log("Configuring [%s] as a [%s] service", accessory.displayName, this.serviceTypeAsString());
         return accessory.getService(this.serviceKind);
     };
 

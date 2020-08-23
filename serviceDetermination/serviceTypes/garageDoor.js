@@ -11,6 +11,10 @@ class GarageDoor extends ServiceType{
         return "garage";
     }
 
+    serviceTypeAsString() {
+        return "GarageDoorOpener"
+    }
+
     translateServerState(device){
         return device.params.switch === "on" ? this.Characteristic.TargetDoorState.OPEN : this.Characteristic.TargetDoorState.CLOSED
     }
@@ -35,12 +39,12 @@ class GarageDoor extends ServiceType{
     };
 
     configureCharacteristics(service, accessory) {
-        service.getCharacteristic(Characteristic.TargetDoorState)
-            .on("set", function(value, callback){this.setState(accessory, value, callback);})
-            .on("get", function(callback){this.getState(accessory, callback);});
+        service.getCharacteristic(this.Characteristic.TargetDoorState)
+            .on("set", (value, callback) => this.setState(accessory, value, callback))
+            .on("get", (callback) => this.getState(accessory, callback));
 
-        service.getCharacteristic(Characteristic.CurrentDoorState)
-            .on("get", function(callback){this.getState(accessory, callback);})
+        service.getCharacteristic(this.Characteristic.CurrentDoorState)
+            .on("get", (callback) => this.getState(accessory, callback))
     }
 }
 

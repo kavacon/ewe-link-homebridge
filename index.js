@@ -40,14 +40,13 @@ function EweLink(log, config, api) {
         this.config = config;
         this.accessories = new Map();
         this.connection = new EweLinkConnection(this.config, this.log);
+        this.servDet = new ServiceDeterminer(this, Service, Characteristic);
+
          if(api) {
              this.log("API is present");
              this.api = api;
              this.api.on("didFinishLaunching", function() {apiDidFinishLaunching(platform);});
          }
-
-         //configure service determination utility
-         this.servDet = new ServiceDeterminer(this, Service, Characteristic);
      })();
 }
 
@@ -83,7 +82,7 @@ function apiDidFinishLaunching(platform){
                 accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.Manufacturer, device.productModel);
                 accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.Model, device.extra.extra.model);
                 accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.FirmwareRevision, device.params.fwVersion);
-                this.servDet.updateCharacteristic(device.deviceid, device.params.switch);
+                platform.servDet.updateCharacteristic(device.deviceid, device.params.switch);
             } else {
                 platform.log("Device Id [%s] needs to be added, adding device", device.deviceid);
                 platform.addAccessory(platform, device);
@@ -110,7 +109,7 @@ function stateCheck(platform, connection){
     platform.accessories.forEach( async (accessory) => {
         const response = await connection.getDevicePowerState(accessory.context.deviceId);
         platform.log("State check for: [%s], server says [%s]", accessory.displayName, response);
-        this.servDet.updateCharacteristic(accessory.context.deviceId, response.state)
+        platform.servDet.updateCharacteristic(accessory.context.deviceId, response.state)
     });
 }
 
@@ -140,7 +139,7 @@ EweLink.prototype.addAccessory = function(platform, device){
         accessory.context.apiKey = device.apikey;
         accessory.reachable = device.online;
 
-        this.servDet.configureAccessoryAsService(accessory, device.name)
+        platform.servDet.configureAccessoryAsService(accessory, device.name)
 
         accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.SerialNumber, device.extra.extra.mac);
         accessory.getService(Service.AccessoryInformation).setCharacteristic(Characteristic.Manufacturer, device.productModel);
