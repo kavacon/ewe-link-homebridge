@@ -1,3 +1,8 @@
+/**
+ * A wrapper class for the homebridge Service.
+ * Allows encapsulation of update methods between the ewe-link server and homebridge
+ * and is used by service determiner to assign appropriate update methods to accessories
+ */
 class ServiceType {
     constructor(serviceKind, platform) {
         this.serviceKind = serviceKind;
@@ -5,10 +10,20 @@ class ServiceType {
         this.platform.log("<%s> service module configured", this.getServiceName());
     }
 
+    /**
+     * The local name/key for this service, is used to determine if a named accessory belongs
+     * to this service type
+     */
     getServiceName() {
         throw("getServiceName has not been defined, this is an invalid ServiceType")
     }
 
+    /**
+     * Set the accessory to the target state on the server
+     * @param accessory the local homebridge accessory
+     * @param targetState the homebridge state requested
+     * @param callback the homebridge completion callback
+     */
     setState(accessory, targetState, callback) {
         const targetServerState = this.translateLocalState(targetState);
 
@@ -35,6 +50,11 @@ class ServiceType {
         })();
     };
 
+    /**
+     * Get the server state of the accessory for homebridge
+     * @param accessory the homebridge accessory
+     * @param callback the completion callback for homebridge
+     */
     getState(accessory, callback) {
         this.platform.log("Checking powerstate for accessory: [%s]", accessory.displayName);
         (async () => {
@@ -63,40 +83,75 @@ class ServiceType {
         })();
     };
 
+    /**
+     * Translate the state of a device on the server into a homebridge characteristic state
+     * @param device the server device
+     */
     translateServerState(device){
         throw("translateServerState has not been defined, this is an invalid ServiceType")
     }
 
+    /**
+     * Translate the homebridge state into a server side representation
+     * @param targetState
+     */
     translateLocalState(targetState){
         throw("translateServerState has not been defined, this is an invalid ServiceType")
     }
 
+    /**
+     * Update homebridge characteristics to align with the requested state
+     * @param accessory the updated accessory
+     * @param targetState the new state
+     * @return {Promise<void>}
+     */
     async performLocalStateChange(accessory, targetState){
         throw("updateCharacteristicsForLocalState has not been defined, this is an invalid ServiceType")
     }
 
-    //update the power state of an accessory from external source
+    /**
+     * update the power state of an accessory from a server update
+     * @param deviceId the id of the accessory on the server
+     * @param state the server state
+     */
     updateCharacteristic(deviceId, state) {
         throw("updateCharacteristic not been defined, this is an invalid ServiceType")
     };
 
-    //configure the characteristics of a switch
+    /**
+     * configure the characteristics of an accessory
+     * @param service the homebridge characteristic service
+     * @param accessory the accessory being configured
+     */
     configureCharacteristics(service, accessory) {
         throw("configureCharacteristics has not been defined, this is an invalid ServiceType")
     }
 
-    //set switch service on a new accessory
+    /**
+     * Add a new accessory for the service type
+     * @param accessory the new accessory
+     * @param name the display name of the accessory
+     * @return {Service | Service}
+     */
     addService(accessory, name) {
         this.platform.log("Configuring [%s] as a [%s] service", name, this.serviceKind);
         return accessory.addService(this.serviceKind, name);
     };
 
-    //set switch service on an existing accessory
+    /**
+     * Refresh an existing accessory for this service type
+     * @param accessory the accessory
+     * @return {DataStreamTransportManagement | Service | Service}
+     */
     refreshService(accessory) {
         this.platform.log("Configuring [%s] as a [%s] service", accessory.displayName, this.serviceKind);
         return accessory.getService(this.serviceKind);
     };
 
+    /**
+     * Set the identify call for the accessory
+     * @param accessory the accessory
+     */
     setOnIdentify(accessory) {
         accessory.on("identify", function (paired, callback) {
             this.platform.log(accessory.displayName, "Identify not supported");

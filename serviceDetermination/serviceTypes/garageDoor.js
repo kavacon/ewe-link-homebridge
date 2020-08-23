@@ -34,7 +34,6 @@ class GarageDoor extends ServiceType{
         accessory.getService(this.Service.GarageDoorOpener).setCharacteristic(this.Characteristic.CurrentDoorState, targetState);
     };
 
-    //configure the characteristics of a switch
     configureCharacteristics(service, accessory) {
         service.getCharacteristic(Characteristic.TargetDoorState)
             .on("set", function(value, callback){this.setState(accessory, value, callback);})
