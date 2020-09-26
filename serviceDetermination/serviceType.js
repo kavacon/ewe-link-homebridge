@@ -42,7 +42,7 @@ class ServiceType {
             if (serverState) {
                 if (serverState.state !== targetServerState) {
                     this.platform.log("Device state does not match target state, updating [%s]", accessory.displayName);
-                    await this.performLocalStateChange(targetState);
+                    await this.performLocalStateChange(accessory, targetState);
                 } else {
                     this.platform.log("Device [%s] already in requested state", accessory.displayName);
                 }
