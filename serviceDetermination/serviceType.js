@@ -100,7 +100,7 @@ class ServiceType {
      * @param targetState
      */
     translateLocalState(targetState){
-        throw("translateServerState has not been defined, this is an invalid ServiceType")
+        throw("translateLocalState has not been defined, this is an invalid ServiceType")
     }
 
     /**
@@ -110,7 +110,7 @@ class ServiceType {
      * @return {Promise<void>}
      */
     async performLocalStateChange(accessory, targetState){
-        throw("updateCharacteristicsForLocalState has not been defined, this is an invalid ServiceType")
+        throw("performLocalStatChange has not been defined, this is an invalid ServiceType")
     }
 
     /**

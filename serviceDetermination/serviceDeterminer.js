@@ -12,7 +12,7 @@ class ServiceDeterminer {
     }
 
     fillMaps(service, characteristic, platform) {
-        const files = fs.readdirSync("./serviceDetermination/serviceTypes/");
+        const files = fs.readdirSync(__dirname + "serviceTypes/");
         files.forEach(file => {
                 const Constructor = require("./serviceTypes/"+file);
                 const type = new Constructor(service, characteristic, platform);
