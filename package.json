@@ -31,6 +31,8 @@
   },
   "devDependencies": {
     "hap-nodejs": "^0.5.11",
-    "homebridge": "^0.4.53"
+    "homebridge": "^0.4.53",
+    "tslint": "^5.12.1",
+    "typescript": "^3.3.3"
   }
 }
