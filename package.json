@@ -27,10 +27,10 @@
   },
   "homepage": "https://github.com/kavacon1/ewe-link-homebridge#readme",
   "dependencies": {
-    "ewelink-api": "^2.0.0"
+    "ewelink-api": "^2.0.1"
   },
   "devDependencies": {
-    "hap-nodejs": "^0.5.7",
+    "hap-nodejs": "^0.5.11",
     "homebridge": "^0.4.53"
   }
 }
