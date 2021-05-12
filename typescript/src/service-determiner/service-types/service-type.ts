@@ -12,11 +12,10 @@ import {EwelinkConnection} from "../../ewelink-connection";
 import {EweLinkContext} from "../../context";
 
 interface ServiceType {
-    readonly service: WithUUID<typeof Service>
-    readonly log: Logging
-    readonly server: EwelinkConnection
-    readonly characteristics: WithUUID<{new(): Characteristic}>[]
 
+    /**
+     * @return a string tag used to filter accessories into service
+     */
     getServiceTag(): string
 
     /**
@@ -85,18 +84,22 @@ interface ServiceType {
 }
 
 export abstract class AbstractServiceType implements ServiceType {
-    readonly abstract log: Logging;
+    readonly log: Logging;
     readonly abstract service: WithUUID<typeof Service>;
     readonly server: EwelinkConnection;
-    readonly characteristics: WithUUID<{new(): Characteristic}>[];
+    readonly abstract characteristics: WithUUID<{new(): Characteristic}>[];
 
+    constructor(server: EwelinkConnection, log: Logging) {
+        this.log = log;
+        this.server = server;
+    }
 
     abstract getServiceTag(): string;
     abstract updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue);
     abstract translateHomebridgeState(targetState: CharacteristicValue): string;
     abstract translateServerState(deviceState: string): CharacteristicValue;
 
-    addAccessoryToService(accessory: PlatformAccessory<EweLinkContext>, name: string) {
+    addAccessoryToService(accessory: PlatformAccessory<EweLinkContext>, name: string): Service {
         this.log.info("Configuring [%s] as a [%s] service", name, this.service.prototype.displayName)
         return accessory.addService(this.service, name)
     }
@@ -119,7 +122,7 @@ export abstract class AbstractServiceType implements ServiceType {
         )
     }
 
-    refreshServiceAccessory(accessory: PlatformAccessory<EweLinkContext>) {
+    refreshServiceAccessory(accessory: PlatformAccessory<EweLinkContext>): Service {
         this.log.info("Refreshing existing accessory [%s]", accessory.displayName);
         return accessory.getService(this.service)
     }
