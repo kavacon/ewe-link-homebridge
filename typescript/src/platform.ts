@@ -12,21 +12,17 @@
 import {
     API,
     APIEvent,
-    CharacteristicEventTypes,
-    CharacteristicSetCallback,
-    CharacteristicValue,
     DynamicPlatformPlugin,
     HAP,
     Logging,
     PlatformAccessory,
-    PlatformAccessoryEvent,
     PlatformConfig,
-    UnknownContext,
 } from "homebridge";
 
 import {EwelinkConnection} from "./ewelink-connection"
 import {Device} from "ewelink-api";
 import {Characteristic, Service} from "hap-nodejs";
+import {EweLinkContext} from "./context";
 
 const PLUGIN_NAME = "homebridge-ewelink-with-api";
 const PLATFORM_NAME = "EweLink";
@@ -54,7 +50,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     private readonly log: Logging;
     private readonly api: API;
     private readonly connection: EwelinkConnection;
-    private readonly accessories: Map<String,PlatformAccessory> = new Map();
+    private readonly accessories: Map<String,PlatformAccessory<EweLinkContext>> = new Map();
     private ewelinkApiToken: string = "";
 
     constructor(log: Logging, config: PlatformConfig, api: API) {
@@ -124,11 +120,11 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         }
     }
 
-    private createAccessory(information: AccessoryInformation): PlatformAccessory {
+    private createAccessory(information: AccessoryInformation): PlatformAccessory<EweLinkContext> {
         //create an accessory using AccessoryInformation and cache it locally
         this.log.info("Found Accessory with Name : [%s], Manufacturer : [%s], API Key: [%s] ",
             information.name, information.manufacturer, information.apiKey);
-        const accessory = new Accessory(information.name, hap.uuid.generate(information.id));
+        const accessory = new Accessory<EweLinkContext>(information.name, hap.uuid.generate(information.id));
         accessory.context.deviceId = information.id;
         accessory.context.apiKey = information.apiKey;
         //TODO add in service setup from service determiner
@@ -144,19 +140,19 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
 
     private onAccessoryStateChange(deviceId: string, state: string) {
         //TODO: implement update once tested to make sure params are correct
-        this.log.info("Websocket indicates that device [%s] is now in state [%s", deviceId, state)
+        this.log.info("Websocket indicates that device [%s] is now in state [%s]", deviceId, state)
     }
 
-    private removeAccessory(accessory: PlatformAccessory) {
+    private removeAccessory(accessory: PlatformAccessory<EweLinkContext>) {
         this.log.info("Removing accessory [%s]", accessory.displayName);
         this.accessories.delete(accessory.context.deviceId);
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
     }
 
 
-    configureAccessory(accessory: PlatformAccessory): void {
+    configureAccessory(accessory: PlatformAccessory<EweLinkContext>): void {
         this.log.info("Running configureAccessory on accessory: [%s]", accessory.displayName)
-        //TODO: handball to serviceDeterminer
+        //TODO: handball to service-determiner
         this.accessories.set(accessory.context.deviceId, accessory);
     }
 }
