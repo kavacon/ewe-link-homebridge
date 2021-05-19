@@ -1,9 +1,7 @@
 import {
     Characteristic,
-    CharacteristicGetCallback,
     CharacteristicSetCallback,
-    CharacteristicValue,
-    HAPStatus,
+    CharacteristicValue, Nullable,
     Service, WithUUID,
 } from "hap-nodejs";
 import {Logging} from "homebridge/lib/logger";
@@ -39,7 +37,7 @@ interface ServiceType {
      * @param accessory the homebridge accessory
      * @param callback the completion callback for homebridge
      */
-    getServerState(accessory: PlatformAccessory<EweLinkContext>, callback: CharacteristicGetCallback): void
+    getServerState(accessory: PlatformAccessory<EweLinkContext>): Promise<CharacteristicValue>
 
     /**
      * Translate the state of a device on the server into a homebridge characteristic state
@@ -81,6 +79,12 @@ interface ServiceType {
      */
     updateCharacteristics(accessory: PlatformAccessory<EweLinkContext>, serverState: string)
 
+    /**
+     * Configure the update settings of an accessory's characteristics
+     * @param accessory
+     */
+    configureAccessoryCharacteristics(accessory: PlatformAccessory<EweLinkContext>)
+
 }
 
 export abstract class AbstractServiceType implements ServiceType {
@@ -104,20 +108,21 @@ export abstract class AbstractServiceType implements ServiceType {
         return accessory.addService(this.service, name)
     }
 
-    getServerState(accessory: PlatformAccessory<EweLinkContext>, callback: CharacteristicGetCallback) {
+    getServerState(accessory: PlatformAccessory<EweLinkContext>): Promise<CharacteristicValue>{
         this.log.info("Checking server side state for accessory [%s]", accessory.displayName)
-        this.server.requestDeviceState(accessory.context.deviceId, deviceState => {
+        return this.server.requestDeviceState(accessory.context.deviceId, deviceState => {
             if (deviceState.error == undefined && deviceState.status != undefined){
                 this.log.info("Device state successfuly retrieved");
                 this.log.info("Device [%s] is in state [%s]", accessory.displayName, deviceState.state)
-                callback(null, this.translateServerState(deviceState.state))
+                return this.translateServerState(deviceState.state)
             } else {
                 this.log.error("Unable to retrieve state for device [%s]", accessory.displayName)
                 this.log.error("DeviceState error: [%d] [%s]", deviceState.error, deviceState.msg)
-                callback(HAPStatus.SERVICE_COMMUNICATION_FAILURE)
+                return null;
             }
-        }).catch(() => {
-                callback(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+        }).catch((error) => {
+            this.log.error("Error %s", error);
+            return null;
             }
         )
     }
@@ -133,7 +138,7 @@ export abstract class AbstractServiceType implements ServiceType {
         })
     }
 
-    setServerState(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue, callback: CharacteristicSetCallback) {
+    setServerState(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue) {
         const targetServerState = this.translateHomebridgeState(targetState);
         this.log.info("Setting powerstate for accessory [%s]", accessory.displayName);
         this.log.info("Request device server state is [%s]", targetServerState);
@@ -148,10 +153,10 @@ export abstract class AbstractServiceType implements ServiceType {
                 }
             } else {
                 this.log.error("Could not retrieve current power state, device [%s] cannot be set", accessory.displayName);
-                callback(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+                this.log.error("DeviceState error: [%d] [%s]", deviceState.error, deviceState.msg)
             }
-        }).catch(() => {
-                callback(HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+        }).catch((error) => {
+            this.log.error("Error %s", error)
             }
         )
     }
@@ -165,6 +170,14 @@ export abstract class AbstractServiceType implements ServiceType {
             accessory.getService(this.service).setCharacteristic(characteristic, homebridgeState);
         })
 
+    }
+
+    configureAccessoryCharacteristics(accessory: PlatformAccessory<EweLinkContext>) {
+        this.characteristics.forEach(characteristic => {
+            accessory.getService(this.service).getCharacteristic(characteristic)
+                .onGet(() => this.getServerState(accessory))
+                .onSet((targetState) => this.setServerState(accessory, targetState))
+        })
     }
 }
 
