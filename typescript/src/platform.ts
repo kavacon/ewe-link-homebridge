@@ -83,20 +83,13 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
             }
         });
 
-        //bulk remove all old accessories
-        this.accessories.forEach( accessory => {
-            this.log.info("Accessory with device Id [%s] no longer active, removing", accessory.context.deviceId);
-            this.removeAccessory(accessory);
-        });
-        this.accessories.clear();
-
         //retrieve devices from ewelink
         connectionPromise
             .then(() => this.connection.requestDevices(devices => devices))
             .then(this.mapDevicesToAccessoryInformation)
-            .then(accessoryInfo => accessoryInfo.map(this.createAccessory))
+            .then(this.sortAccessoryInformation)
             //bulk add all new accessories
-            .then(accessories => this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, accessories))
+            .then(this.processAccessoryInformation)
             .then(() => this.connection.openMonitoringSocket(this.onAccessoryStateChange))
             .finally(() => this.log.info("Accessory and connection setup completed, check earlier logs for any errors"))
 
@@ -124,6 +117,38 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         }
     }
 
+    private sortAccessoryInformation(infoArray: AccessoryInformation[]): {new: AccessoryInformation[], existing: AccessoryInformation[], deletions: String[]} {
+        const newAccessories = new Array<AccessoryInformation>();
+        const existingAccessories = new Array<AccessoryInformation>();
+        const deletions = Array.from(this.accessories.keys());
+
+        infoArray.forEach( info => {
+            if (this.accessories.has(info.name)) {
+                newAccessories.push(info);
+            } else {
+                existingAccessories.push(info);
+                const idx = deletions.indexOf(info.id);
+                deletions.splice(idx, 1);
+            }
+        });
+
+        return {
+            new: newAccessories,
+            existing: existingAccessories,
+            deletions: deletions
+        }
+    }
+
+    private processAccessoryInformation(sortedInformation: {new: AccessoryInformation[], existing: AccessoryInformation[], deletions: String[]}){
+        const newAccessories = sortedInformation.new.map(this.createAccessory);
+        const expiredAccessories = sortedInformation.deletions.map((id) => this.removeAccessory(id));
+        sortedInformation.existing.forEach(this.updateAccessory)
+
+        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, expiredAccessories);
+        this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, newAccessories)
+
+    }
+
     private createAccessory(information: AccessoryInformation): PlatformAccessory<EweLinkContext> {
         //create an accessory using AccessoryInformation and cache it locally
         this.log.info("Found Accessory with Name : [%s], Manufacturer : [%s], API Key: [%s] ",
@@ -136,10 +161,23 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         accessory.getService(Service.AccessoryInformation)!
             .setCharacteristic(Characteristic.SerialNumber, information.serialNumber)
             .setCharacteristic(Characteristic.Manufacturer, information.manufacturer)
+            .setCharacteristic(Characteristic.Model, information.model)
             .setCharacteristic(Characteristic.FirmwareRevision, information.firmareRevision);
 
         this.accessories.set(information.id, accessory);
         return accessory
+    }
+
+    private updateAccessory(information: AccessoryInformation) {
+        this.log("Device Id [%s] already configured, updating configuration", information.id);
+        const accessory = this.accessories.get(information.id);
+        accessory!.getService(Service.AccessoryInformation)!
+            .setCharacteristic(Characteristic.Name, information.name)
+            .setCharacteristic(Characteristic.SerialNumber, information.serialNumber)
+            .setCharacteristic(Characteristic.Manufacturer, information.manufacturer)
+            .setCharacteristic(Characteristic.Model, information.model)
+            .setCharacteristic(Characteristic.FirmwareRevision, information.firmareRevision);
+        this.serviceManager.updateCharacteristicStates(accessory!, information.state);
     }
 
     private onAccessoryStateChange(deviceId: string, state: string) {
@@ -147,15 +185,16 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         this.log.info("Websocket indicates that device [%s] is now in state [%s]", deviceId, state)
     }
 
-    private removeAccessory(accessory: PlatformAccessory<EweLinkContext>) {
-        this.log.info("Removing accessory [%s]", accessory.displayName);
-        this.accessories.delete(accessory.context.deviceId);
-        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, [accessory]);
+    private removeAccessory(deviceId: String): PlatformAccessory<EweLinkContext>{
+        const accessory = this.accessories.get(deviceId);
+        this.log.info("Removing accessory [%s]", accessory?.displayName);
+        this.accessories.delete(deviceId);
+        return accessory!;
     }
 
 
     configureAccessory(accessory: PlatformAccessory<EweLinkContext>): void {
-        this.log.info("Running configureAccessory on accessory: [%s]", accessory.displayName)
+        this.log.info("Running configureAccessory on accessory: [%s]", accessory.displayName);
         this.serviceManager.configureAccessoryWithService(accessory);
         this.accessories.set(accessory.context.deviceId, accessory);
     }
