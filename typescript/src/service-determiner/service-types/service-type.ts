@@ -54,17 +54,9 @@ interface ServiceType {
     /**
      * Add a new accessory for the service type
      * @param accessory the new accessory
-     * @param name the display name of the accessory
      * @return {Service}
      */
-    addAccessoryToService(accessory: PlatformAccessory<EweLinkContext>, name: string): Service
-
-    /**
-     * Refresh an existing accessory for this service type
-     * @param accessory the accessory
-     * @return {Service}
-     */
-    refreshServiceAccessory(accessory: PlatformAccessory<EweLinkContext>): Service
+    addAccessoryToService(accessory: PlatformAccessory<EweLinkContext>): Service
 
     /**
      * Set the identify call for the accessory
@@ -103,9 +95,10 @@ export abstract class AbstractServiceType implements ServiceType {
     abstract translateHomebridgeState(targetState: CharacteristicValue): string;
     abstract translateServerState(deviceState: string): CharacteristicValue;
 
-    addAccessoryToService(accessory: PlatformAccessory<EweLinkContext>, name: string): Service {
-        this.log.info("Configuring [%s] as a [%s] service", name, this.service.prototype.displayName)
-        return accessory.addService(this.service, name)
+    addAccessoryToService(accessory: PlatformAccessory<EweLinkContext>): Service {
+        this.log.info("Configuring [%s] as a [%s] service", accessory.displayName,
+            this.service.prototype.displayName);
+        return accessory.addService(this.service, accessory.displayName);
     }
 
     getServerState(accessory: PlatformAccessory<EweLinkContext>): Promise<CharacteristicValue>{
@@ -125,11 +118,6 @@ export abstract class AbstractServiceType implements ServiceType {
             return null;
             }
         )
-    }
-
-    refreshServiceAccessory(accessory: PlatformAccessory<EweLinkContext>): Service {
-        this.log.info("Refreshing existing accessory [%s]", accessory.displayName);
-        return accessory.getService(this.service)
     }
 
     setAccessoryOnIdentify(accessory: PlatformAccessory<EweLinkContext>) {
