@@ -1,11 +1,11 @@
 import {AbstractServiceType} from "./service-type";
-import {Characteristic, CharacteristicValue, Service} from "hap-nodejs";
+import {Characteristic, CharacteristicValue, Service, WithUUID} from "hap-nodejs";
 import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {EweLinkContext} from "../../context";
 
 export class GarageDoor extends AbstractServiceType {
-    readonly characteristics = [Characteristic.TargetDoorState, Characteristic.CurrentDoorState];
-    readonly service = Service.GarageDoorOpener;
+    protected readonly characteristics: WithUUID<{new(): Characteristic}>[] = [Characteristic.TargetDoorState, Characteristic.CurrentDoorState];
+    protected readonly service: WithUUID<typeof Service> = Service.GarageDoorOpener;
 
     getServiceTag(): string {
         return "garage";

@@ -1,11 +1,11 @@
 import {AbstractServiceType} from "./service-type";
-import {Characteristic, CharacteristicValue, Service} from "hap-nodejs";
+import {Characteristic, CharacteristicValue, Service, WithUUID} from "hap-nodejs";
 import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {EweLinkContext} from "../../context";
 
 export class Switch extends AbstractServiceType {
-    readonly characteristics = [Characteristic.On];
-    readonly service = Service.Switch;
+    protected readonly characteristics: WithUUID<{new(): Characteristic}>[] = [Characteristic.On];
+    protected readonly service: WithUUID<typeof Service> = Service.Switch;
 
     getServiceTag(): string {
         return "switch";
@@ -21,7 +21,7 @@ export class Switch extends AbstractServiceType {
 
     updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue) {
         this.server.attemptToggleDevice(accessory.context.deviceId, DeviceState => {
-            accessory.getService(this.service).setCharacteristic(Characteristic.On, targetState);
+            accessory.getService(this.service)?.setCharacteristic(Characteristic.On, targetState);
         }).catch((error) => {
             this.log.error("Error experienced when attempting to toggle accessory [%s] state", accessory.displayName);
             throw error;

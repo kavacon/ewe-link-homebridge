@@ -7,10 +7,10 @@ import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {EweLinkContext} from "../context";
 
 export class ServiceManager {
-    readonly serviceTypeMap: Map<string, AbstractServiceType> = new Map<string, AbstractServiceType>();
-    readonly defaultType: AbstractServiceType;
-    readonly log: Logging;
-    readonly accessoryCache: Map<string, AbstractServiceType> = new Map<string, AbstractServiceType>();
+    private readonly serviceTypeMap: Map<string, AbstractServiceType> = new Map<string, AbstractServiceType>();
+    private readonly defaultType: AbstractServiceType;
+    private readonly log: Logging;
+    private readonly accessoryCache: Map<string, AbstractServiceType> = new Map<string, AbstractServiceType>();
 
     constructor(server: EwelinkConnection, log: Logging) {
         this.fillMaps(server, log);
@@ -47,7 +47,7 @@ export class ServiceManager {
         return this.accessoryCache.get(name) || this.calculateServiceTypeFromName(name);
     }
 
-    public refreshCharacteristicStates(accessory: PlatformAccessory<EweLinkContext>, serverState: string) {
+    public updateCharacteristicStates(accessory: PlatformAccessory<EweLinkContext>, serverState: string) {
         this.getServiceTypeForAccessory(accessory.displayName).updateCharacteristics(accessory, serverState);
     }
 

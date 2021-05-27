@@ -11,17 +11,17 @@ interface Connection {
     readonly _connection: any;
     readonly params: ConnectionParams
 
-    activateConnection<T>(onSuccess: (auth: LoginInfo) => T): Promise<T | void>
+    activateConnection<T>(onSuccess: (auth: LoginInfo) => T): Promise<T | null>
 
-    requestDevice<T>(deviceId: string, onSuccess: (device: Device) => T): Promise<T | void>
+    requestDevice<T>(deviceId: string, onSuccess: (device: Device) => T): Promise<T | null>
 
-    requestDeviceState<T>(deviceId: string, onSuccess: (state: DeviceState) => T): Promise<T | void>
+    requestDeviceState<T>(deviceId: string, onSuccess: (state: DeviceState) => T): Promise<T | null>
 
-    requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | void>
+    requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | null>
 
     openMonitoringSocket(onChange: (deviceId: string, state: string) => void)
 
-    attemptToggleDevice<T>(deviceId: string, onSuccess: (DeviceState) => void): Promise<T | void>
+    attemptToggleDevice<T>(deviceId: string, onSuccess: (DeviceState) => T): Promise<T | null>
 }
 
 /**
@@ -45,23 +45,23 @@ export class EwelinkConnection implements Connection {
             .then(onSuccess, this.onFailure("activateConnection"));
     }
 
-    requestDevice<T>(deviceId: string, onSuccess: (device: Device) => T): Promise<T | void> {
+    requestDevice<T>(deviceId: string, onSuccess: (device: Device) => T): Promise<T | null> {
        return this._connection.getDevice(deviceId)
             .then(onSuccess, this.onFailure("requestDevice"));
     }
 
-    requestDeviceState<T>(deviceId: string, onSuccess: (state: DeviceState) => T): Promise<T | void> {
+    requestDeviceState<T>(deviceId: string, onSuccess: (state: DeviceState) => T): Promise<T | null> {
         return this._connection.getDevicePowerState(deviceId)
             .then(onSuccess, this.onFailure("requestDeviceState"))
     }
 
-    requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | void> {
+    requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | null> {
         return this._connection.getDevices()
             .then(onSuccess, this.onFailure("requestDevices"))
     }
 
 
-    attemptToggleDevice<T>(deviceId: string, onSuccess: (DeviceState) => T): Promise<T | void> {
+    attemptToggleDevice<T>(deviceId: string, onSuccess: (DeviceState) => T): Promise<T | null> {
         return this._connection.toggleDevice(deviceId)
             .then(onSuccess, this.onFailure("attemptToggleDevice"))
     }
@@ -84,6 +84,7 @@ export class EwelinkConnection implements Connection {
         return (reason: any) => {
             this.logger.error("The following error was encountered by the eweLink connection " +
                 "while attempting to execute function [%s] %s", method, reason)
+            return null;
         }
     }
 }

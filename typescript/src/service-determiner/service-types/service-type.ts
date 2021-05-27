@@ -20,9 +20,8 @@ interface ServiceType {
      * Set the accessory to the target state on the server
      * @param accessory the local homebridge accessory
      * @param targetState the homebridge state requested
-     * @param callback the homebridge completion callback
      */
-    setServerState(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue, callback: CharacteristicSetCallback): void
+    setServerState(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue): void
 
     /**
      * Update homebridge characteristics to align with the requested state
@@ -37,7 +36,7 @@ interface ServiceType {
      * @param accessory the homebridge accessory
      * @param callback the completion callback for homebridge
      */
-    getServerState(accessory: PlatformAccessory<EweLinkContext>): Promise<CharacteristicValue>
+    getServerState(accessory: PlatformAccessory<EweLinkContext>): Promise<Nullable<CharacteristicValue>>
 
     /**
      * Translate the state of a device on the server into a homebridge characteristic state
@@ -80,10 +79,10 @@ interface ServiceType {
 }
 
 export abstract class AbstractServiceType implements ServiceType {
-    readonly log: Logging;
-    readonly abstract service: WithUUID<typeof Service>;
-    readonly server: EwelinkConnection;
-    readonly abstract characteristics: WithUUID<{new(): Characteristic}>[];
+    protected readonly log: Logging;
+    protected readonly abstract service: WithUUID<typeof Service>;
+    protected readonly server: EwelinkConnection;
+    protected readonly abstract characteristics: WithUUID<{new(): Characteristic}>[];
 
     constructor(server: EwelinkConnection, log: Logging) {
         this.log = log;
@@ -101,10 +100,10 @@ export abstract class AbstractServiceType implements ServiceType {
         return accessory.addService(this.service, accessory.displayName);
     }
 
-    getServerState(accessory: PlatformAccessory<EweLinkContext>): Promise<CharacteristicValue>{
+    getServerState(accessory: PlatformAccessory<EweLinkContext>): Promise<Nullable<CharacteristicValue>> {
         this.log.info("Checking server side state for accessory [%s]", accessory.displayName)
         return this.server.requestDeviceState(accessory.context.deviceId, deviceState => {
-            if (deviceState.error == undefined && deviceState.status != undefined){
+            if (!deviceState.error && deviceState.state){
                 this.log.info("Device state successfuly retrieved");
                 this.log.info("Device [%s] is in state [%s]", accessory.displayName, deviceState.state)
                 return this.translateServerState(deviceState.state)
@@ -132,7 +131,7 @@ export abstract class AbstractServiceType implements ServiceType {
         this.log.info("Request device server state is [%s]", targetServerState);
 
         this.server.requestDeviceState(accessory.context.deviceId, deviceState => {
-            if (deviceState.error == undefined && deviceState.state != undefined) {
+            if (!deviceState.error && deviceState.state) {
                 if (deviceState.state != targetServerState) {
                     this.log.info("Device not in requested state, updating");
                     this.updateAccessoryStates(accessory, targetState)
@@ -155,14 +154,14 @@ export abstract class AbstractServiceType implements ServiceType {
         this.characteristics.forEach(characteristic => {
             this.log.info("Updating [%s] for accessory [%s] to [%s]", characteristic.toString(),
                 accessory.displayName, homebridgeState);
-            accessory.getService(this.service).setCharacteristic(characteristic, homebridgeState);
+            accessory.getService(this.service)?.setCharacteristic(characteristic, homebridgeState);
         })
 
     }
 
     configureAccessoryCharacteristics(accessory: PlatformAccessory<EweLinkContext>) {
         this.characteristics.forEach(characteristic => {
-            accessory.getService(this.service).getCharacteristic(characteristic)
+            accessory.getService(this.service)?.getCharacteristic(characteristic)
                 .onGet(() => this.getServerState(accessory))
                 .onSet((targetState) => this.setServerState(accessory, targetState))
         })
