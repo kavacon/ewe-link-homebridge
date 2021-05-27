@@ -23,6 +23,7 @@ import {EwelinkConnection} from "./ewelink-connection"
 import {Device} from "ewelink-api";
 import {Characteristic, Service} from "hap-nodejs";
 import {EweLinkContext} from "./context";
+import {ServiceManager} from "./service-determiner/service-manager";
 
 const PLUGIN_NAME = "homebridge-ewelink-with-api";
 const PLATFORM_NAME = "EweLink";
@@ -38,6 +39,7 @@ interface AccessoryInformation {
     model: string,
     firmareRevision: string,
     apiKey: string,
+    state: string,
 }
 
 export = (api: API) => {
@@ -51,6 +53,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     private readonly api: API;
     private readonly connection: EwelinkConnection;
     private readonly accessories: Map<String,PlatformAccessory<EweLinkContext>> = new Map();
+    private readonly serviceManager: ServiceManager;
     private ewelinkApiToken: string = "";
 
     constructor(log: Logging, config: PlatformConfig, api: API) {
@@ -65,12 +68,12 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
             this.log
         );
 
-        //TODO establish service determiner
+        this.serviceManager = new ServiceManager(this.connection, this.log);
         this.api.on(APIEvent.DID_FINISH_LAUNCHING, this.apiDidFinishLaunching)
     }
 
     private apiDidFinishLaunching(){
-        this.log.info ("apiDidFinishLaunching callback activating")
+        this.log.info ("apiDidFinishLaunching callback activating");
 
         //log in to ewelink
         const connectionPromise = this.connection.activateConnection(value => {
@@ -100,7 +103,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
 
     }
 
-    private mapDevicesToAccessoryInformation(devices: Device[] | void): AccessoryInformation[]{
+    private mapDevicesToAccessoryInformation(devices: Device[] | null): AccessoryInformation[]{
         if (devices) {
             this.log.info("Following devices retrieved from eweLink:\n%s", devices);
             return devices.map(device => {
@@ -112,6 +115,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
                    model: device.extra.extra.model,
                    firmareRevision: device.params.fwVersion,
                    apiKey: device.apikey,
+                   state: device.params.switch
                }
            })
         } else {
@@ -127,13 +131,13 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         const accessory = new Accessory<EweLinkContext>(information.name, hap.uuid.generate(information.id));
         accessory.context.deviceId = information.id;
         accessory.context.apiKey = information.apiKey;
-        //TODO add in service setup from service determiner
+
+        this.serviceManager.configureNewAccessoryWithService(accessory);
         accessory.getService(Service.AccessoryInformation)!
             .setCharacteristic(Characteristic.SerialNumber, information.serialNumber)
             .setCharacteristic(Characteristic.Manufacturer, information.manufacturer)
-            //TODO Revisit this, it may need to be moved to the service determiner
-            .setCharacteristic(Characteristic.Identify, false)
             .setCharacteristic(Characteristic.FirmwareRevision, information.firmareRevision);
+
         this.accessories.set(information.id, accessory);
         return accessory
     }
@@ -152,7 +156,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
 
     configureAccessory(accessory: PlatformAccessory<EweLinkContext>): void {
         this.log.info("Running configureAccessory on accessory: [%s]", accessory.displayName)
-        //TODO: handball to service-determiner
+        this.serviceManager.configureAccessoryWithService(accessory);
         this.accessories.set(accessory.context.deviceId, accessory);
     }
 }
