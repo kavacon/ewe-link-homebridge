@@ -2,11 +2,19 @@ import {AbstractServiceType} from "./service-type";
 import {Characteristic, CharacteristicValue, Service, WithUUID} from "hap-nodejs";
 import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {EweLinkContext} from "../../context";
+import {EwelinkConnection} from "../../ewelink-connection";
+import {Logging} from "homebridge/lib/logger";
+import {HAP} from "homebridge";
 
 export class Switch extends AbstractServiceType {
-    protected readonly characteristics: WithUUID<{new(): Characteristic}>[] = [Characteristic.On];
-    protected readonly service: WithUUID<typeof Service> = Service.Switch;
+    protected readonly characteristics: WithUUID<{new(): Characteristic}>[];
+    protected readonly service: WithUUID<typeof Service>;
 
+    constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
+        super(server, log, hap);
+        this.service = hap.Service.Switch;
+        this.characteristics = [hap.Characteristic.On];
+    }
     getServiceTag(): string {
         return "switch";
     }

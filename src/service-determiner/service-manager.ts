@@ -5,6 +5,7 @@ import {AbstractServiceType} from "./service-types/service-type";
 import {Switch} from "./service-types/switch";
 import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {EweLinkContext} from "../context";
+import {HAP} from "homebridge";
 
 export class ServiceManager {
     private readonly serviceTypeMap: Map<string, AbstractServiceType> = new Map<string, AbstractServiceType>();
@@ -12,19 +13,19 @@ export class ServiceManager {
     private readonly log: Logging;
     private readonly accessoryCache: Map<string, AbstractServiceType> = new Map<string, AbstractServiceType>();
 
-    constructor(server: EwelinkConnection, log: Logging) {
-        this.fillMaps(server, log);
-        this.defaultType = new Switch(server, log);
+    constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
+        this.fillMaps(server, log, hap);
+        this.defaultType = new Switch(server, log, hap);
         this.log = log;
 
     }
 
-    private async fillMaps(server: EwelinkConnection, log: Logging) {
+    private async fillMaps(server: EwelinkConnection, log: Logging, hap: HAP) {
         const files = readdirSync(__dirname + "service-types/");
         for (const file in files) {
             if (file !== "service-type.ts") {
                 const Constructor = await import("./service-types/" + file);
-                const serviceType: AbstractServiceType = new Constructor(server, log);
+                const serviceType: AbstractServiceType = new Constructor(server, log, hap);
                 this.serviceTypeMap.set(serviceType.getServiceTag(),serviceType);
             }
         }

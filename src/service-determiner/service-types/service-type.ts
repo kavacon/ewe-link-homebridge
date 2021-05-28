@@ -8,6 +8,7 @@ import {Logging} from "homebridge/lib/logger";
 import {PlatformAccessory, PlatformAccessoryEvent} from "homebridge/lib/platformAccessory";
 import {EwelinkConnection} from "../../ewelink-connection";
 import {EweLinkContext} from "../../context";
+import {HAP} from "homebridge";
 
 interface ServiceType {
 
@@ -84,7 +85,7 @@ export abstract class AbstractServiceType implements ServiceType {
     protected readonly server: EwelinkConnection;
     protected readonly abstract characteristics: WithUUID<{new(): Characteristic}>[];
 
-    constructor(server: EwelinkConnection, log: Logging) {
+    protected constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
         this.log = log;
         this.server = server;
     }

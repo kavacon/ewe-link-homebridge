@@ -68,7 +68,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
             this.log
         );
 
-        this.serviceManager = new ServiceManager(this.connection, this.log);
+        this.serviceManager = new ServiceManager(this.connection, this.log, hap);
         this.api.on(APIEvent.DID_FINISH_LAUNCHING, this.apiDidFinishLaunching)
     }
 
