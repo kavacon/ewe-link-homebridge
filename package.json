@@ -2,7 +2,7 @@
   "name": "homebridge-ewelink-with-api",
   "version": "1.0.0",
   "description": "Utility package to connect ewelink devices to homebridge",
-  "main": "index.js",
+  "main": "platform.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
