@@ -117,18 +117,18 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         }
     }
 
-    private sortAccessoryInformation(infoArray: AccessoryInformation[]): {new: AccessoryInformation[], existing: AccessoryInformation[], deletions: String[]} {
+    private sortAccessoryInformation(infoArray: AccessoryInformation[]): { new: AccessoryInformation[], existing: AccessoryInformation[], deletions: String[] } {
         const newAccessories = new Array<AccessoryInformation>();
         const existingAccessories = new Array<AccessoryInformation>();
         const deletions = Array.from(this.accessories.keys());
 
-        infoArray.forEach( info => {
+        infoArray.forEach(info => {
             if (this.accessories.has(info.name)) {
-                newAccessories.push(info);
-            } else {
                 existingAccessories.push(info);
                 const idx = deletions.indexOf(info.id);
                 deletions.splice(idx, 1);
+            } else {
+                newAccessories.push(info);
             }
         });
 
@@ -142,7 +142,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     private processAccessoryInformation(sortedInformation: {new: AccessoryInformation[], existing: AccessoryInformation[], deletions: String[]}){
         const newAccessories = sortedInformation.new.map(this.createAccessory);
         const expiredAccessories = sortedInformation.deletions.map((id) => this.removeAccessory(id));
-        sortedInformation.existing.forEach(this.updateAccessory)
+        sortedInformation.existing.forEach(this.updateAccessory);
 
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, expiredAccessories);
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, newAccessories)
@@ -191,7 +191,6 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         this.accessories.delete(deviceId);
         return accessory!;
     }
-
 
     configureAccessory(accessory: PlatformAccessory<EweLinkContext>): void {
         this.log.info("Running configureAccessory on accessory: [%s]", accessory.displayName);

@@ -1,8 +1,8 @@
 import {
     Characteristic,
-    CharacteristicSetCallback,
-    CharacteristicValue, Nullable,
-    Service, WithUUID,
+    CharacteristicValue,
+    Service,
+    WithUUID,
 } from "hap-nodejs";
 import {Logging} from "homebridge/lib/logger";
 import {PlatformAccessory, PlatformAccessoryEvent} from "homebridge/lib/platformAccessory";
@@ -36,7 +36,7 @@ interface ServiceType {
      * @param accessory the homebridge accessory
      * @param callback the completion callback for homebridge
      */
-    getServerState(accessory: PlatformAccessory<EweLinkContext>): Promise<Nullable<CharacteristicValue>>
+    getServerState(accessory: PlatformAccessory<EweLinkContext>): Promise<CharacteristicValue | null>
 
     /**
      * Translate the state of a device on the server into a homebridge characteristic state
@@ -100,16 +100,16 @@ export abstract class AbstractServiceType implements ServiceType {
         return accessory.addService(this.service, accessory.displayName);
     }
 
-    getServerState(accessory: PlatformAccessory<EweLinkContext>): Promise<Nullable<CharacteristicValue>> {
-        this.log.info("Checking server side state for accessory [%s]", accessory.displayName)
+    getServerState(accessory: PlatformAccessory<EweLinkContext>): Promise<CharacteristicValue | null> {
+        this.log.info("Checking server side state for accessory [%s]", accessory.displayName);
         return this.server.requestDeviceState(accessory.context.deviceId, deviceState => {
             if (!deviceState.error && deviceState.state){
                 this.log.info("Device state successfuly retrieved");
-                this.log.info("Device [%s] is in state [%s]", accessory.displayName, deviceState.state)
+                this.log.info("Device [%s] is in state [%s]", accessory.displayName, deviceState.state);
                 return this.translateServerState(deviceState.state)
             } else {
-                this.log.error("Unable to retrieve state for device [%s]", accessory.displayName)
-                this.log.error("DeviceState error: [%d] [%s]", deviceState.error, deviceState.msg)
+                this.log.error("Unable to retrieve state for device [%s]", accessory.displayName);
+                this.log.error("DeviceState error: [%d] [%s]", deviceState.error, deviceState.msg);
                 return null;
             }
         }).catch((error) => {
