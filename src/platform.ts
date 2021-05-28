@@ -181,8 +181,9 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     }
 
     private onAccessoryStateChange(deviceId: string, state: string) {
-        //TODO: implement update once tested to make sure params are correct
-        this.log.info("Websocket indicates that device [%s] is now in state [%s]", deviceId, state)
+        this.log.info("Websocket indicates that device [%s] is now in state [%s]", deviceId, state);
+        const accessory = this.accessories.get(deviceId);
+        this.serviceManager.updateCharacteristicStates(accessory, state);
     }
 
     private removeAccessory(deviceId: String): PlatformAccessory<EweLinkContext>{
