@@ -33,7 +33,8 @@ export class EwelinkConnection implements Connection {
     readonly params: ConnectionParams;
     readonly logger: Logging;
     private socket: any;
-    private authenticated: boolean = false;
+    private accessToken: string = "";
+    private region: string = "";
 
     constructor(props: ConnectionParams, logger: Logging) {
         this.params = props;
@@ -41,9 +42,10 @@ export class EwelinkConnection implements Connection {
         this.logger = logger
     }
 
-    activateConnection<T>(onSuccess: (auth: LoginInfo) => void): Promise<any> {
-        return this._connection.login()
-            .then(auth => {this.authenticated = (auth != undefined);return auth})
+    activateConnection<T>(onSuccess: (auth: any) => void): Promise<any> {
+        // @ts-ignore
+        return this._connection.getCredentials()
+            .then(auth => {this.accessToken = auth.at;this.region = auth.region;return auth})
             .then(onSuccess, this.onFailure("activateConnection"));
     }
 
@@ -96,7 +98,7 @@ export class EwelinkConnection implements Connection {
     }
 
     private connection(attempt: number = 0) : Promise<eWelink> {
-        if (this.authenticated) {
+        if (this.accessToken.length > 0) {
             return Promise.resolve(this._connection);
         } else {
             return new Promise<eWelink>((resolve, reject) => {
