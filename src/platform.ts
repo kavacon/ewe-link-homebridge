@@ -45,7 +45,7 @@ interface AccessoryInformation {
 export = (api: API) => {
     hap = api.hap;
     Accessory = api.platformAccessory;
-    api.registerPlatform(PLATFORM_NAME, EweLinkPlatform);
+    api.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, EweLinkPlatform);
 };
 
 class EweLinkPlatform implements DynamicPlatformPlugin {
@@ -54,7 +54,6 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     private readonly connection: EwelinkConnection;
     private readonly accessories: Map<String,PlatformAccessory<EweLinkContext>> = new Map();
     private readonly serviceManager: ServiceManager;
-    private ewelinkApiToken: string = "";
 
     constructor(log: Logging, config: PlatformConfig, api: API) {
         this.log = log;
@@ -69,17 +68,16 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         );
 
         this.serviceManager = new ServiceManager(this.connection, this.log, hap);
-        this.api.on(APIEvent.DID_FINISH_LAUNCHING, this.apiDidFinishLaunching)
+        this.api.on(APIEvent.DID_FINISH_LAUNCHING, this.apiDidFinishLaunching.bind(this))
     }
 
     private apiDidFinishLaunching(){
-        this.log.info ("apiDidFinishLaunching callback activating");
+        this.log.info("apiDidFinishLaunching callback activating");
 
         //log in to ewelink
         const connectionPromise = this.connection.activateConnection(value => {
             if (value) {
                 this.log.info("eweLink Connection established");
-                this.ewelinkApiToken = value.at;
             }
         });
 
@@ -91,6 +89,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
             //bulk add all new accessories
             .then(this.processAccessoryInformation)
             .then(() => this.connection.openMonitoringSocket(this.onAccessoryStateChange))
+            .catch( reason => this.log.error("Upstream error: [%s]", reason))
             .finally(() => this.log.info("Accessory and connection setup completed, check earlier logs for any errors"))
 
 
@@ -183,7 +182,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     private onAccessoryStateChange(deviceId: string, state: string) {
         this.log.info("Websocket indicates that device [%s] is now in state [%s]", deviceId, state);
         const accessory = this.accessories.get(deviceId);
-        this.serviceManager.updateCharacteristicStates(accessory, state);
+        this.serviceManager.updateCharacteristicStates(accessory!, state);
     }
 
     private removeAccessory(deviceId: String): PlatformAccessory<EweLinkContext>{
