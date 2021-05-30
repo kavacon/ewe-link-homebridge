@@ -21,12 +21,14 @@ export class ServiceManager {
     }
 
     private async fillMaps(server: EwelinkConnection, log: Logging, hap: HAP) {
-        const files = readdirSync(__dirname + "service-types/");
+        const files = readdirSync(__dirname + "/service-types/");
         for (const file in files) {
-            if (file !== "service-type.ts") {
+            console.log(file);
+            if (!file.includes("service-type") && file.endsWith(".js")) {
                 const Constructor = await import("./service-types/" + file);
                 const serviceType: AbstractServiceType = new Constructor(server, log, hap);
                 this.serviceTypeMap.set(serviceType.getServiceTag(),serviceType);
+                this.log.info("Initialised service management for: [%s]", serviceType.getServiceTag());
             }
         }
     }

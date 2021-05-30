@@ -29,7 +29,7 @@ export class Switch extends AbstractServiceType {
 
     updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue) {
         this.server.attemptToggleDevice(accessory.context.deviceId, DeviceState => {
-            accessory.getService(this.service)?.setCharacteristic(Characteristic.On, targetState);
+            accessory.getService(this.service)?.setCharacteristic(this.hap.Characteristic.On, targetState);
         }).catch((error) => {
             this.log.error("Error experienced when attempting to toggle accessory [%s] state", accessory.displayName);
             throw error;

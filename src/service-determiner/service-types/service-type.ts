@@ -81,6 +81,7 @@ interface ServiceType {
 
 export abstract class AbstractServiceType implements ServiceType {
     protected readonly log: Logging;
+    protected readonly hap: HAP;
     protected readonly abstract service: WithUUID<typeof Service>;
     protected readonly server: EwelinkConnection;
     protected readonly abstract characteristics: WithUUID<{new(): Characteristic}>[];
@@ -88,6 +89,7 @@ export abstract class AbstractServiceType implements ServiceType {
     protected constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
         this.log = log;
         this.server = server;
+        this.hap = hap;
     }
 
     abstract getServiceTag(): string;
