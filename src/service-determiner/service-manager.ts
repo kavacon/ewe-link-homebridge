@@ -2,7 +2,7 @@ import {readdirSync} from "fs";
 import {EwelinkConnection} from "../ewelink-connection";
 import {Logging} from "homebridge/lib/logger";
 import {AbstractServiceType} from "./service-types/service-type";
-import {Switch} from "./service-types/switch";
+import Switch from "./service-types/switch";
 import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {EweLinkContext} from "../context";
 import {HAP} from "homebridge";
@@ -14,19 +14,19 @@ export class ServiceManager {
     private readonly accessoryCache: Map<string, AbstractServiceType> = new Map<string, AbstractServiceType>();
 
     constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
-        this.fillMaps(server, log, hap);
         this.defaultType = new Switch(server, log, hap);
         this.log = log;
-
+        this.fillMaps(server, hap);
     }
 
-    private async fillMaps(server: EwelinkConnection, log: Logging, hap: HAP) {
+    private async fillMaps(server: EwelinkConnection, hap: HAP) {
         const files = readdirSync(__dirname + "/service-types/");
-        for (const file in files) {
-            console.log(file);
+        this.log.info("Found files: ", JSON.stringify(files));
+        for (const file of files) {
             if (!file.includes("service-type") && file.endsWith(".js")) {
+                this.log.info(file);
                 const Constructor = await import("./service-types/" + file);
-                const serviceType: AbstractServiceType = new Constructor(server, log, hap);
+                const serviceType: AbstractServiceType = new Constructor.default(server, this.log, hap);
                 this.serviceTypeMap.set(serviceType.getServiceTag(),serviceType);
                 this.log.info("Initialised service management for: [%s]", serviceType.getServiceTag());
             }

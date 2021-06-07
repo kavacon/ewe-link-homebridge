@@ -6,7 +6,7 @@ import {EwelinkConnection} from "../../ewelink-connection";
 import {Logging} from "homebridge/lib/logger";
 import {HAP} from "homebridge";
 
-export class Switch extends AbstractServiceType {
+export default class Switch extends AbstractServiceType {
     protected readonly characteristics: WithUUID<{new(): Characteristic}>[];
     protected readonly service: WithUUID<typeof Service>;
     protected readonly serviceName = "Switch";
