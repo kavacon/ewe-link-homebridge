@@ -1,0 +1,34 @@
+{
+  "pluginAlias": "EweLink",
+  "pluginType": "platform",
+  "singular": true,
+  "schema": {
+    "type": "object",
+    "properties": {
+      "name": {
+        "title": "Name",
+        "type": "string",
+        "required": true,
+        "default": "EweLink"
+      },
+      "email": {
+        "title": "email for Ewelink account",
+        "type": "string",
+        "required": true,
+        "default": ""
+      },
+      "password": {
+        "title": "password for Ewelink account",
+        "type": "string",
+        "required": true,
+        "default": ""
+      },
+      "region": {
+        "title": "region/server location to access ewelink from",
+        "type": "string",
+        "required": true,
+        "default": "cn"
+      }
+    }
+  }
+}
