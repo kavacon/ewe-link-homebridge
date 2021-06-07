@@ -9,6 +9,7 @@ import {HAP} from "homebridge";
 export class GarageDoor extends AbstractServiceType {
     protected readonly characteristics: WithUUID<{new(): Characteristic}>[];
     protected readonly service: WithUUID<typeof Service>;
+    protected readonly serviceName = "GarageDoorOpener";
 
     constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
         super(server, log, hap);

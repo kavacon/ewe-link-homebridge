@@ -84,11 +84,11 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         //retrieve devices from ewelink
         connectionPromise
             .then(() => this.connection.requestDevices(devices => devices))
-            .then(this.mapDevicesToAccessoryInformation)
-            .then(this.sortAccessoryInformation)
+            .then(this.mapDevicesToAccessoryInformation.bind(this))
+            .then(this.sortAccessoryInformation.bind(this))
             //bulk add all new accessories
-            .then(this.processAccessoryInformation)
-            .then(() => this.connection.openMonitoringSocket(this.onAccessoryStateChange))
+            .then(this.processAccessoryInformation.bind(this))
+            .then(() => this.connection.openMonitoringSocket(this.onAccessoryStateChange.bind(this)))
             .catch( reason => this.log.error("Upstream error: [%s]", reason))
             .finally(() => this.log.info("Accessory and connection setup completed, check earlier logs for any errors"))
 
@@ -97,7 +97,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
 
     private mapDevicesToAccessoryInformation(devices: Device[] | null): AccessoryInformation[]{
         if (devices) {
-            this.log.info("Following devices retrieved from eweLink:\n%s", devices);
+            this.log.info("Following devices retrieved from eweLink:\n%s", JSON.stringify(devices, null, 4));
             return devices.map(device => {
                return {
                    id: device.deviceid,
@@ -122,7 +122,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         const deletions = Array.from(this.accessories.keys());
 
         infoArray.forEach(info => {
-            if (this.accessories.has(info.name)) {
+            if (this.accessories.has(info.id)) {
                 existingAccessories.push(info);
                 const idx = deletions.indexOf(info.id);
                 deletions.splice(idx, 1);
@@ -139,9 +139,9 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     }
 
     private processAccessoryInformation(sortedInformation: {new: AccessoryInformation[], existing: AccessoryInformation[], deletions: String[]}){
-        const newAccessories = sortedInformation.new.map(this.createAccessory);
+        const newAccessories = sortedInformation.new.map(this.createAccessory.bind(this));
         const expiredAccessories = sortedInformation.deletions.map((id) => this.removeAccessory(id));
-        sortedInformation.existing.forEach(this.updateAccessory);
+        sortedInformation.existing.forEach(this.updateAccessory.bind(this));
 
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, expiredAccessories);
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, newAccessories)
@@ -168,7 +168,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     }
 
     private updateAccessory(information: AccessoryInformation) {
-        this.log("Device Id [%s] already configured, updating configuration", information.id);
+        this.log("Device [%s] already configured, updating configuration", information.name);
         const accessory = this.accessories.get(information.id);
         accessory!.getService(Service.AccessoryInformation)!
             .setCharacteristic(Characteristic.Name, information.name)

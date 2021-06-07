@@ -77,7 +77,7 @@ export class EwelinkConnection implements Connection {
     openMonitoringSocket(onChange: (deviceId: string, state: string) => void) {
         return this.connection()
             .then(c =>
-                c.openWebSocket(data => {onChange(data["deviceid"], data["params"].switch)})
+                c.openWebSocket(data => {this.logger.info(JSON.stringify(data, null, 4));onChange(data["deviceid"], data["params"].switch)})
                     .then(socket => {
                         this.logger.info("Web socket for state monitoring successfully opened");
                         this.socket = socket;

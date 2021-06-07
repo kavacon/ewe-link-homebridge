@@ -64,5 +64,6 @@ export class ServiceManager {
     public configureAccessoryWithService(accessory: PlatformAccessory<EweLinkContext>) {
         const serviceType = this.getServiceTypeForAccessory(accessory.displayName);
         serviceType.configureAccessoryCharacteristics(accessory);
+        serviceType.setAccessoryOnIdentify(accessory);
     }
 }
