@@ -84,13 +84,15 @@ interface ServiceType {
 
 }
 
+export type CharacteristicConfig = {item: WithUUID<{new(): Characteristic}> , excluded?: CharacteristicEventTypes[] }
+
 export abstract class AbstractServiceType implements ServiceType {
     protected readonly log: Logging;
     protected readonly hap: HAP;
     protected readonly abstract service: WithUUID<typeof Service>;
     protected readonly abstract serviceName: string;
     protected readonly server: EwelinkConnection;
-    protected readonly abstract characteristics: WithUUID<{new(): Characteristic}>[];
+    protected readonly abstract charConfig: CharacteristicConfig[];
 
     protected constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
         this.log = log;
@@ -162,20 +164,25 @@ export abstract class AbstractServiceType implements ServiceType {
 
     updateCharacteristics(accessory: PlatformAccessory<EweLinkContext>, serverState: string) {
         const homebridgeState = this.translateServerState(serverState);
-
-        this.characteristics.forEach(characteristic => {
-            this.log.info("Updating [%s] for accessory [%s] to [%s]", characteristic.UUID,
+        this.charConfig.forEach(config => {
+            this.log.info("Updating [%s] for accessory [%s] to [%s]", config.item.UUID,
                 accessory.displayName, homebridgeState);
-            accessory.getService(this.service)?.setCharacteristic(characteristic, homebridgeState);
+            accessory.getService(this.service)?.setCharacteristic(config.item, homebridgeState);
         })
 
     }
 
     configureAccessoryCharacteristics(accessory: PlatformAccessory<EweLinkContext>) {
-        this.characteristics.forEach(characteristic => {
-            accessory.getService(this.service)?.getCharacteristic(characteristic)
-                .on(CharacteristicEventTypes.GET, (callback) => this.getServerState(callback, accessory))
-                .on(CharacteristicEventTypes.SET, (targetState, callback) => this.setServerState(callback, accessory, targetState))
+        this.charConfig.forEach(config => {
+            if (!config.excluded?.includes(CharacteristicEventTypes.GET)) {
+                accessory.getService(this.service)?.getCharacteristic(config.item)
+                    .on(CharacteristicEventTypes.GET, (callback) => this.getServerState(callback, accessory));
+            }
+            if (!config.excluded?.includes(CharacteristicEventTypes.SET)) {
+                accessory.getService(this.service)?.getCharacteristic(config.item)
+                    .on(CharacteristicEventTypes.SET, (targetState, callback) => this.setServerState(callback, accessory, targetState));
+
+            }
         })
     }
 }
