@@ -68,28 +68,32 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         );
 
         this.serviceManager = new ServiceManager(this.connection, this.log, hap);
-        this.api.on(APIEvent.DID_FINISH_LAUNCHING, this.apiDidFinishLaunching.bind(this))
+        this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(config.real_time_update))
     }
 
-    private apiDidFinishLaunching(){
+    private apiDidFinishLaunching(enableWebSocket: boolean){
         this.log.info("apiDidFinishLaunching callback activating");
 
         //log in to ewelink
-        const connectionPromise = this.connection.activateConnection(value => {
+        let connectionPromise = this.connection.activateConnection(value => {
             if (value) {
                 this.log.info("eweLink Connection established");
             }
         });
 
         //retrieve devices from ewelink
-        connectionPromise
+        connectionPromise = connectionPromise
             .then(() => this.connection.requestDevices(devices => devices))
             .then(this.mapDevicesToAccessoryInformation.bind(this))
             .then(this.sortAccessoryInformation.bind(this))
             //bulk add all new accessories
-            .then(this.processAccessoryInformation.bind(this))
-            .then(() => this.connection.openMonitoringSocket(this.onAccessoryStateChange.bind(this)))
-            .catch( reason => this.log.error("Upstream error: [%s]", reason))
+            .then(this.processAccessoryInformation.bind(this));
+
+         if (enableWebSocket) {
+             connectionPromise = connectionPromise.then(() => this.connection.openMonitoringSocket(this.onAccessoryStateChange.bind(this)))
+         }
+
+         connectionPromise.catch( reason => this.log.error("Upstream error: [%s]", reason))
             .finally(() => this.log.info("Accessory and connection setup completed, check earlier logs for any errors"))
 
 
