@@ -28,6 +28,12 @@
         "type": "string",
         "required": true,
         "default": "cn"
+      },
+      "real_time_update": {
+        "title": "flag to enable updates through ewelink websockets",
+        "type": "boolean",
+        "required": false,
+        "default": false
       }
     }
   }
