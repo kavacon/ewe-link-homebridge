@@ -3,7 +3,7 @@ import {AccessoryInformation} from "./accessory-mapper";
 import {EweLinkContext} from "../context";
 import {Characteristic, Service} from "hap-nodejs";
 import {API, HAP, Logging} from "homebridge";
-import {ServiceMap} from "../service-determiner/service-map";
+import {ServiceMap} from "../service/service-map";
 import {EwelinkConnection} from "../ewelink-connection";
 
 export class AccessoryService {

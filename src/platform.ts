@@ -21,7 +21,6 @@ import {
 
 import {EwelinkConnection} from "./ewelink-connection"
 import {EweLinkContext} from "./context";
-import {ServiceManager} from "./service-determiner/service-manager";
 import {AccessoryInformation, mapDevicesToAccessoryInformation} from "./accessory/accessory-mapper";
 import {AccessoryService} from "./accessory/accessory-service";
 
@@ -41,7 +40,6 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     private readonly log: Logging;
     private readonly api: API;
     private readonly connection: EwelinkConnection;
-    private readonly serviceManager: ServiceManager;
     private readonly accessoryService: AccessoryService;
 
     constructor(log: Logging, config: PlatformConfig, api: API) {
@@ -56,7 +54,6 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
             this.log
         );
 
-        this.serviceManager = new ServiceManager(this.connection, this.log, hap);
         this.accessoryService = new AccessoryService(this.log, this.connection, hap);
         // Only occurs once all existing accessories have been loaded
         this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(config.real_time_update))
