@@ -163,6 +163,7 @@ export abstract class AbstractServiceType implements ServiceType {
     }
 
     updateCharacteristics(accessory: PlatformAccessory<EweLinkContext>, serverState: string) {
+        this.log.info("update accessory")
         const homebridgeState = this.translateServerState(serverState);
         this.charConfig.forEach(config => {
             this.log.info("Updating [%s] for accessory [%s] to [%s]", config.item.UUID,
@@ -173,6 +174,7 @@ export abstract class AbstractServiceType implements ServiceType {
     }
 
     configureAccessoryCharacteristics(accessory: PlatformAccessory<EweLinkContext>) {
+        this.log.warn("configure accessory")
         this.charConfig.forEach(config => {
             if (!config.excluded?.includes(CharacteristicEventTypes.GET)) {
                 accessory.getService(this.service)?.getCharacteristic(config.item)

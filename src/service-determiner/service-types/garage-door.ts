@@ -25,14 +25,17 @@ export default class GarageDoor extends AbstractServiceType {
     }
 
     translateHomebridgeState(targetState: CharacteristicValue): string {
+        this.log.info("translate state")
         return targetState === this.hap.Characteristic.TargetDoorState.OPEN ? "on" : "off";
     }
 
     translateServerState(deviceState: string): CharacteristicValue {
+        this.log.info("translate server state")
         return deviceState === "on" ? this.hap.Characteristic.TargetDoorState.OPEN : this.hap.Characteristic.TargetDoorState.CLOSED;
     }
 
     updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue) {
+        this.log.info("update accessory states")
         const currentDoorState = targetState === this.hap.Characteristic.CurrentDoorState.OPEN
             ? this.hap.Characteristic.CurrentDoorState.OPENING
             : this.hap.Characteristic.CurrentDoorState.CLOSING;

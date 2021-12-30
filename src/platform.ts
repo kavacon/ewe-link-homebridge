@@ -20,27 +20,16 @@ import {
 } from "homebridge";
 
 import {EwelinkConnection} from "./ewelink-connection"
-import {Device} from "ewelink-api";
-import {Characteristic, Service} from "hap-nodejs";
 import {EweLinkContext} from "./context";
 import {ServiceManager} from "./service-determiner/service-manager";
+import {AccessoryInformation, mapDevicesToAccessoryInformation} from "./accessory/accessory-mapper";
+import {AccessoryService} from "./accessory/accessory-service";
 
 const PLUGIN_NAME = "homebridge-ewelink-with-api";
 const PLATFORM_NAME = "EweLink";
 
 let hap: HAP;
 let Accessory: typeof PlatformAccessory;
-
-interface AccessoryInformation {
-    id: string,
-    name: string,
-    serialNumber: string,
-    manufacturer: string,
-    model: string,
-    firmareRevision: string,
-    apiKey: string,
-    state: string,
-}
 
 export = (api: API) => {
     hap = api.hap;
@@ -52,8 +41,8 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     private readonly log: Logging;
     private readonly api: API;
     private readonly connection: EwelinkConnection;
-    private readonly accessories: Map<String,PlatformAccessory<EweLinkContext>> = new Map();
     private readonly serviceManager: ServiceManager;
+    private readonly accessoryService: AccessoryService;
 
     constructor(log: Logging, config: PlatformConfig, api: API) {
         this.log = log;
@@ -68,6 +57,8 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         );
 
         this.serviceManager = new ServiceManager(this.connection, this.log, hap);
+        this.accessoryService = new AccessoryService(this.log, this.connection, hap);
+        // Only occurs once all existing accessories have been loaded
         this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(config.real_time_update))
     }
 
@@ -83,14 +74,13 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
 
         //retrieve devices from ewelink
         connectionPromise = connectionPromise
-            .then(() => this.connection.requestDevices(devices => devices))
-            .then(this.mapDevicesToAccessoryInformation.bind(this))
+            .then(() => this.connection.requestDevices(devices => mapDevicesToAccessoryInformation(this.log, devices)))
             .then(this.sortAccessoryInformation.bind(this))
             //bulk add all new accessories
             .then(this.processAccessoryInformation.bind(this));
 
          if (enableWebSocket) {
-             connectionPromise = connectionPromise.then(() => this.connection.openMonitoringSocket(this.onAccessoryStateChange.bind(this)))
+             connectionPromise = connectionPromise.then(() => this.connection.openMonitoringSocket(this.accessoryService.updateAccessory))
          }
 
          connectionPromise.catch( reason => this.log.error("Upstream error: [%s]", reason))
@@ -99,106 +89,31 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
 
     }
 
-    private mapDevicesToAccessoryInformation(devices: Device[] | null): AccessoryInformation[]{
-        if (devices) {
-            this.log.info("Following devices retrieved from eweLink:\n%s", JSON.stringify(devices, null, 4));
-            return devices.map(device => {
-               return {
-                   id: device.deviceid,
-                   name: device.name,
-                   serialNumber: device.extra.extra.mac,
-                   manufacturer: device.productModel,
-                   model: device.extra.extra.model,
-                   firmareRevision: device.params.fwVersion,
-                   apiKey: device.apikey,
-                   state: device.params.switch
-               }
-           })
-        } else {
-            this.log.warn("No devices retrieved from eweLink check previous logs for any errors");
-            return [];
-        }
-    }
-
-    private sortAccessoryInformation(infoArray: AccessoryInformation[]): { new: AccessoryInformation[], existing: AccessoryInformation[], deletions: String[] } {
-        const newAccessories = new Array<AccessoryInformation>();
-        const existingAccessories = new Array<AccessoryInformation>();
-        const deletions = Array.from(this.accessories.keys());
-
-        infoArray.forEach(info => {
-            if (this.accessories.has(info.id)) {
-                existingAccessories.push(info);
-                const idx = deletions.indexOf(info.id);
-                deletions.splice(idx, 1);
-            } else {
-                newAccessories.push(info);
-            }
-        });
+    private sortAccessoryInformation(infoArray: AccessoryInformation[] | null): { new: AccessoryInformation[], existing: AccessoryInformation[], deletions: string[] } {
+        const map = new Map(infoArray?.map(i => [i.id, i]))
+        const sorting = this.accessoryService.determineExistence(Array.from(map.keys()));
 
         return {
-            new: newAccessories,
-            existing: existingAccessories,
-            deletions: deletions
+            new: sorting.notFound.map(i => map.get(i)!),
+            existing: sorting.intersection.map(i => map.get(i)!),
+            deletions: sorting.serviceOnly,
         }
     }
 
-    private processAccessoryInformation(sortedInformation: {new: AccessoryInformation[], existing: AccessoryInformation[], deletions: String[]}){
-        const newAccessories = sortedInformation.new.map(this.createAccessory.bind(this));
-        const expiredAccessories = sortedInformation.deletions.map((id) => this.removeAccessory(id));
-        sortedInformation.existing.forEach(this.updateAccessory.bind(this));
+    private processAccessoryInformation(sortedInformation: {new: AccessoryInformation[], existing: AccessoryInformation[], deletions: string[]}){
+        const newAccessories = sortedInformation.new.map(this.accessoryService.createAccessory);
+        const expiredAccessories = sortedInformation.deletions.map(this.accessoryService.removeAccessory);
+        sortedInformation.existing.forEach(this.accessoryService.updateAccessoryInformation);
 
         this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, expiredAccessories);
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, newAccessories)
 
     }
 
-    private createAccessory(information: AccessoryInformation): PlatformAccessory<EweLinkContext> {
-        //create an accessory using AccessoryInformation and cache it locally
-        this.log.info("Found Accessory with Name : [%s], Manufacturer : [%s], API Key: [%s] ",
-            information.name, information.manufacturer, information.apiKey);
-        const accessory = new Accessory<EweLinkContext>(information.name, hap.uuid.generate(information.id));
-        accessory.context.deviceId = information.id;
-        accessory.context.apiKey = information.apiKey;
-
-        this.serviceManager.configureNewAccessoryWithService(accessory);
-        accessory.getService(Service.AccessoryInformation)!
-            .setCharacteristic(Characteristic.SerialNumber, information.serialNumber)
-            .setCharacteristic(Characteristic.Manufacturer, information.manufacturer)
-            .setCharacteristic(Characteristic.Model, information.model)
-            .setCharacteristic(Characteristic.FirmwareRevision, information.firmareRevision);
-
-        this.accessories.set(information.id, accessory);
-        return accessory
-    }
-
-    private updateAccessory(information: AccessoryInformation) {
-        this.log("Device [%s] already configured, updating configuration", information.name);
-        const accessory = this.accessories.get(information.id);
-        accessory!.getService(Service.AccessoryInformation)!
-            .setCharacteristic(Characteristic.Name, information.name)
-            .setCharacteristic(Characteristic.SerialNumber, information.serialNumber)
-            .setCharacteristic(Characteristic.Manufacturer, information.manufacturer)
-            .setCharacteristic(Characteristic.Model, information.model)
-            .setCharacteristic(Characteristic.FirmwareRevision, information.firmareRevision);
-        this.serviceManager.updateCharacteristicStates(accessory!, information.state);
-    }
-
-    private onAccessoryStateChange(deviceId: string, state: string) {
-        this.log.info("Websocket indicates that device [%s] is now in state [%s]", deviceId, state);
-        const accessory = this.accessories.get(deviceId);
-        this.serviceManager.updateCharacteristicStates(accessory!, state);
-    }
-
-    private removeAccessory(deviceId: String): PlatformAccessory<EweLinkContext>{
-        const accessory = this.accessories.get(deviceId);
-        this.log.info("Removing accessory [%s]", accessory?.displayName);
-        this.accessories.delete(deviceId);
-        return accessory!;
-    }
-
     configureAccessory(accessory: PlatformAccessory<EweLinkContext>): void {
-        this.log.info("Running configureAccessory on accessory: [%s]", accessory.displayName);
-        this.serviceManager.configureAccessoryWithService(accessory);
-        this.accessories.set(accessory.context.deviceId, accessory);
+        this.log.info("Loading saved accessory: [%s]", accessory.displayName);
+        this.accessoryService.configureIdentify(accessory);
+        this.accessoryService.configureService(accessory);
+        this.accessoryService.saveAccessory(accessory);
     }
 }
