@@ -54,7 +54,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
             this.log
         );
 
-        this.accessoryService = new AccessoryService(this.log, this.connection, hap);
+        this.accessoryService = new AccessoryService(this.log, this.connection, this.api, hap);
         // Only occurs once all existing accessories have been loaded
         this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(config.real_time_update))
     }
@@ -77,7 +77,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
             .then(this.processAccessoryInformation.bind(this));
 
          if (enableWebSocket) {
-             connectionPromise = connectionPromise.then(() => this.connection.openMonitoringSocket(this.accessoryService.updateAccessory))
+             connectionPromise = connectionPromise.then(() => this.connection.openMonitoringSocket(this.accessoryService.updateAccessoryState))
          }
 
          connectionPromise.catch( reason => this.log.error("Upstream error: [%s]", reason))
@@ -98,13 +98,15 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     }
 
     private processAccessoryInformation(sortedInformation: {new: AccessoryInformation[], existing: AccessoryInformation[], deletions: string[]}){
-        const newAccessories = sortedInformation.new.map(this.accessoryService.createAccessory);
-        const expiredAccessories = sortedInformation.deletions.map(this.accessoryService.removeAccessory);
-        sortedInformation.existing.forEach(this.accessoryService.updateAccessoryInformation);
-
-        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, expiredAccessories);
+        const newAccessories = sortedInformation.new.map(a => this.accessoryService.createAccessory(a));
         this.api.registerPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, newAccessories)
+        newAccessories.forEach(a => this.accessoryService.saveAccessory(a))
 
+        const expiredAccessories = sortedInformation.deletions.map(a => this.accessoryService.removeAccessory(a));
+        this.api.unregisterPlatformAccessories(PLUGIN_NAME, PLATFORM_NAME, expiredAccessories);
+
+        sortedInformation.existing.forEach(a => this.accessoryService.updateAccessoryInformation(a));
+        sortedInformation.existing.forEach(a => this.accessoryService.updateAccessoryState(a.id, a.state));
     }
 
     configureAccessory(accessory: PlatformAccessory<EweLinkContext>): void {

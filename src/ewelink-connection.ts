@@ -15,7 +15,7 @@ interface Connection {
 
     requestDevice<T>(deviceId: string, onSuccess: (device: Device) => T): Promise<T | null>
 
-    requestDeviceState<T>(deviceId: string, onSuccess: (state: DeviceState) => T): Promise<T | null>
+    requestDeviceState<T>(deviceId: string): Promise<DeviceState | null>
 
     requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | null>
 
@@ -55,9 +55,9 @@ export class EwelinkConnection implements Connection {
            .catch(this.onFailure("requestDevice"));
     }
 
-    requestDeviceState<T>(deviceId: string, onSuccess: (state: DeviceState) => T): Promise<T | null> {
+    requestDeviceState<T>(deviceId: string): Promise<DeviceState | null> {
         return this.connection()
-            .then( c => c.getDevicePowerState(deviceId).then(onSuccess))
+            .then( c => c.getDevicePowerState(deviceId))
             .catch(this.onFailure("requestDeviceState"));
     }
 

@@ -33,7 +33,3 @@ export function mapDevicesToAccessoryInformation(log: Logging, devices: Device[]
         return [];
     }
 }
-
-export function mapServiceType() {
-
-}
