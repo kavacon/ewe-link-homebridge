@@ -1,25 +1,21 @@
 import {Categories, Characteristic, CharacteristicValue, Service, WithUUID} from "hap-nodejs";
 import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {EweLinkContext} from "../../context";
-import {EwelinkConnection} from "../../ewelink-connection";
-import {Logging} from "homebridge/lib/logger";
-import {HAP} from "homebridge";
 import {AbstractServiceUtility} from "./service-utility";
 
-export default class SwitchImpl extends AbstractServiceUtility {
-    protected readonly service: WithUUID<typeof Service>;
-    protected readonly serviceName = "Switch";
+export default class SwitchUtility extends AbstractServiceUtility {
 
-    constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
-        super(server, log, hap);
-        this.service = hap.Service.Switch;
-    }
     getServiceTag(): string {
         return "switch";
     }
 
     getServiceCategory(): Categories {
         return Categories.SWITCH;
+    }
+
+    addAccessoryToService(accessory: PlatformAccessory<EweLinkContext>): Service {
+        this.log.info("Configuring [%s] as a Switch", accessory.displayName);
+        return accessory.addService(this.hap.Service.Switch, accessory.displayName);
     }
 
     translateHomebridgeState(targetState: CharacteristicValue): string {
@@ -31,8 +27,8 @@ export default class SwitchImpl extends AbstractServiceUtility {
     }
 
     updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue) {
-        this.server.attemptToggleDevice(accessory.context.deviceId, DeviceState => {
-            accessory.getService(this.service)?.setCharacteristic(this.hap.Characteristic.On, targetState);
+        this.server.attemptToggleDevice(accessory.context.deviceId).then(_ => {
+            accessory.getService(this.hap.Service.Switch)?.setCharacteristic(this.hap.Characteristic.On, targetState);
         }).catch((error) => {
             this.log.error("Error experienced when attempting to toggle accessory [%s] state", accessory.displayName);
             throw error;

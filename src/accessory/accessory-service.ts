@@ -20,10 +20,9 @@ export class AccessoryService {
         this.serviceMap = new ServiceMap(log, server, hap);
     }
 
-    configureIdentify(accessory: PlatformAccessory) {
-        accessory.on(PlatformAccessoryEvent.IDENTIFY, () => {
-            this.log.warn("Identify not supported for [%s]", accessory.displayName)
-        });
+    configureIdentify(accessory: PlatformAccessory<EweLinkContext>) {
+        const serviceType = this.serviceMap.getServiceType(accessory);
+        serviceType.setAccessoryOnIdentify(accessory);
     }
 
     configureService(accessory: PlatformAccessory<EweLinkContext>) {

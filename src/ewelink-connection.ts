@@ -21,7 +21,7 @@ interface Connection {
 
     openMonitoringSocket(onChange: (deviceId: string, state: string) => void)
 
-    attemptToggleDevice<T>(deviceId: string, onSuccess: (DeviceState) => T): Promise<T | null>
+    attemptToggleDevice<T>(deviceId: string): Promise<DeviceState | null>
 }
 
 /**
@@ -68,9 +68,9 @@ export class EwelinkConnection implements Connection {
     }
 
 
-    attemptToggleDevice<T>(deviceId: string, onSuccess: (DeviceState) => T): Promise<T | null> {
+    attemptToggleDevice<T>(deviceId: string): Promise<DeviceState | null> {
         return this.connection()
-            .then( c => c.toggleDevice(deviceId).then(onSuccess))
+            .then( c => c.toggleDevice(deviceId))
             .catch(this.onFailure("attemptToggleDevice"));
     }
 

@@ -1,19 +1,10 @@
 import {Categories, Characteristic, CharacteristicValue, Service, WithUUID} from "hap-nodejs";
 import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {EweLinkContext} from "../../context";
-import {EwelinkConnection} from "../../ewelink-connection";
-import {Logging} from "homebridge/lib/logger";
-import {HAP} from "homebridge";
 import {AbstractServiceUtility} from "./service-utility";
+import {checkNotNull} from "../../util";
 
-export default class GarageDoorImpl extends AbstractServiceUtility {
-    protected readonly service: WithUUID<typeof Service>;
-    protected readonly serviceName = "GarageDoorOpener";
-
-    constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
-        super(server, log, hap);
-        this.service = hap.Service.GarageDoorOpener;
-    }
+export default class GarageDoorOpenerUtility extends AbstractServiceUtility {
 
     getServiceTag(): string {
         return "garage";
@@ -23,13 +14,16 @@ export default class GarageDoorImpl extends AbstractServiceUtility {
         return Categories.GARAGE_DOOR_OPENER;
     }
 
+    addAccessoryToService(accessory: PlatformAccessory<EweLinkContext>): Service {
+        this.log.info("Configuring [%s] as a Garage Door Opener", accessory.displayName);
+        return accessory.addService(this.hap.Service.GarageDoorOpener, accessory.displayName);
+    }
+
     translateHomebridgeState(targetState: CharacteristicValue): string {
-        this.log.info("translate state")
         return targetState === this.hap.Characteristic.TargetDoorState.OPEN ? "on" : "off";
     }
 
     translateServerState(deviceState: string, targetCharacteristic): CharacteristicValue {
-        this.log.info("translate server state")
         if (targetCharacteristic == this.hap.Characteristic.TargetDoorState) {
             return deviceState === "on" ? this.hap.Characteristic.TargetDoorState.OPEN
                 : this.hap.Characteristic.TargetDoorState.CLOSED;
@@ -46,12 +40,16 @@ export default class GarageDoorImpl extends AbstractServiceUtility {
         const currentDoorState = targetState === this.hap.Characteristic.CurrentDoorState.OPEN
             ? this.hap.Characteristic.CurrentDoorState.OPENING
             : this.hap.Characteristic.CurrentDoorState.CLOSING;
-        accessory.getService(this.service)?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, currentDoorState);
-        this.server.attemptToggleDevice(accessory.context.deviceId, DeviceState => {
-            accessory.getService(this.service)?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, targetState);
+        accessory.getService(this.hap.Service.GarageDoorOpener)?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, currentDoorState);
+        this.server.attemptToggleDevice(accessory.context.deviceId).then(deviceState => {
+            checkNotNull(deviceState)
+            // build in delay to account for speed of door
+            setTimeout(() => accessory.getService(this.hap.Service.GarageDoorOpener)
+                ?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, targetState), 20000);
         }).catch((error) => {
             this.log.error("Error experienced when attempting to toggle accessory [%s] state", accessory.displayName);
-            accessory.getService(this.service)?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, this.hap.Characteristic.CurrentDoorState.STOPPED);
+            accessory.getService(this.hap.Service.GarageDoorOpener)
+                ?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, this.hap.Characteristic.CurrentDoorState.STOPPED);
             throw error;
         })
     }

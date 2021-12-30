@@ -14,9 +14,9 @@ import {PlatformAccessory, PlatformAccessoryEvent} from "homebridge/lib/platform
 import {EwelinkConnection} from "../../ewelink-connection";
 import {EweLinkContext} from "../../context";
 import {HAP} from "homebridge";
+import {checkNotNull} from "../../util";
 
 interface ServiceUtility {
-
     /**
      * @return a string tag used to filter accessories into service
      */
@@ -91,11 +91,9 @@ interface ServiceUtility {
 export abstract class AbstractServiceUtility implements ServiceUtility {
     protected readonly log: Logging;
     protected readonly hap: HAP;
-    protected readonly abstract service: WithUUID<typeof Service>;
-    protected readonly abstract serviceName: string;
     protected readonly server: EwelinkConnection;
 
-    protected constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
+    constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
         this.log = log;
         this.server = server;
         this.hap = hap;
@@ -119,20 +117,14 @@ export abstract class AbstractServiceUtility implements ServiceUtility {
 
     abstract setCharacteristic(accessory: PlatformAccessory<EweLinkContext>, char: WithUUID<{ new(): Characteristic }>, value: string);
 
-    addAccessoryToService(accessory: PlatformAccessory<EweLinkContext>): Service {
-        this.log.info("Configuring [%s] as a [%s] service", accessory.displayName,
-            this.serviceName);
-        return accessory.addService(this.service, accessory.displayName);
-    }
+    abstract addAccessoryToService(accessory: PlatformAccessory<EweLinkContext>): Service;
 
     getServerState(callback: CharacteristicGetCallback, char: WithUUID<{ new(): Characteristic }>,
                    accessory: PlatformAccessory<EweLinkContext>) {
         this.log.info("Checking server side state for accessory [%s]", accessory.displayName);
         this.server.requestDeviceState(accessory.context.deviceId)
             .then(deviceState => {
-                if (!deviceState) {
-                    throw Error("no device state found")
-                }
+                deviceState = checkNotNull(deviceState);
                 if (!deviceState.error && deviceState.state) {
                     this.log.info("Device state successfuly retrieved");
                     this.log.info("Device [%s] is in state [%s]", accessory.displayName, deviceState.state);
@@ -162,9 +154,7 @@ export abstract class AbstractServiceUtility implements ServiceUtility {
 
         this.server.requestDeviceState(accessory.context.deviceId)
             .then(deviceState => {
-                if (!deviceState) {
-                    throw Error("no device state found")
-                }
+                deviceState = checkNotNull(deviceState);
                 if (!deviceState.error && deviceState.state) {
                     if (deviceState.state != targetServerState) {
                         this.log.info("Device not in requested state, updating");
