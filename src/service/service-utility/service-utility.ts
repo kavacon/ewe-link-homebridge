@@ -14,7 +14,6 @@ import {PlatformAccessory, PlatformAccessoryEvent} from "homebridge/lib/platform
 import {EwelinkConnection} from "../../ewelink-connection";
 import {EweLinkContext} from "../../context";
 import {HAP} from "homebridge";
-import {DeviceState} from "ewelink-api";
 
 interface ServiceUtility {
 

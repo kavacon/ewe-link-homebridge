@@ -34,6 +34,10 @@ export default class GarageDoorImpl extends AbstractServiceUtility {
             return deviceState === "on" ? this.hap.Characteristic.TargetDoorState.OPEN
                 : this.hap.Characteristic.TargetDoorState.CLOSED;
         }
+        if (targetCharacteristic == this.hap.Characteristic.CurrentDoorState) {
+            return deviceState === "on" ? this.hap.Characteristic.CurrentDoorState.OPEN
+                : this.hap.Characteristic.TargetDoorState.CLOSED;
+        }
         throw new Error("unknown translation for garage characteristic");
     }
 
