@@ -79,7 +79,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
 
         if (enableWebSocket) {
             connectionPromise = connectionPromise.then(() => this.connection.openMonitoringSocket(webSocketToleranceWindow,
-                this.accessoryService.updateAccessoryState));
+                (id, state) => this.accessoryService.updateAccessoryState(id, state)));
         }
 
          connectionPromise.catch( reason => this.log.error("Upstream error: [%s]", reason))

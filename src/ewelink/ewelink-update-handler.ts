@@ -25,6 +25,6 @@ function scheduleUpdate(toleranceWindow: number, deviceId: string, callback:  ()
     if (timeout) {
         clearTimeout(timeout);
     }
-    timeout = setTimeout(callback, toleranceWindow);
+    timeout = setTimeout(callback, toleranceWindow*1000);
     deviceUpdates.set(deviceId, timeout);
 }
