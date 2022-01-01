@@ -22,6 +22,9 @@ interface ServiceUtility {
      */
     getServiceTag(): string
 
+    /**
+     * @return the homebridge category that matches this service
+     */
     getServiceCategory(): Categories
 
     /**
@@ -80,10 +83,25 @@ interface ServiceUtility {
      */
     configure(accessory: PlatformAccessory<EweLinkContext>)
 
+    /**
+     * @return an array of Characteristics associated with the service that can be explicitly set
+     */
     getEditableCharacteristics(): WithUUID<{ new(): Characteristic }>[]
 
+    /**
+     * Query an accessory to retrieve the implementation of a characteristic
+     * @param accessory the accessory to query
+     * @param char the type of characteristic to retrieve
+     * @return The instantiated characteristic for the accessory
+     */
     getCharacteristic(accessory: PlatformAccessory<EweLinkContext>, char: WithUUID<{ new(): Characteristic }>): Characteristic;
 
+    /**
+     * Set the homebridge state of an accessory charactertistic, should only be called on editable characteristics
+     * @param accessory the accessory to query
+     * @param char the type of characteristic to set
+     * @param value the server state value of the characteristic
+     */
     setCharacteristic(accessory: PlatformAccessory<EweLinkContext>, char: WithUUID<{ new(): Characteristic }>, value: string)
 
 }
