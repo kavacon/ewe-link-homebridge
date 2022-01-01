@@ -5,6 +5,7 @@ import {Characteristic, Service} from "hap-nodejs";
 import {API, HAP, Logging} from "homebridge";
 import {ServiceMap} from "../service/service-map";
 import {EwelinkConnection} from "../ewelink/ewelink-connection";
+import {deleteFrom} from "../util";
 
 export class AccessoryService {
     private readonly accessories: Map<string, PlatformAccessory<EweLinkContext>> = new Map();
@@ -89,8 +90,7 @@ export class AccessoryService {
         ids.forEach(id => {
             if (this.accessories.has(id)) {
                 intersection.push(id);
-                const idx = noMatch.indexOf(id);
-                noMatch.splice(idx, 1);
+                deleteFrom(id, noMatch);
             } else {
                 notFound.push(id);
             }

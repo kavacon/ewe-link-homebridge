@@ -1,6 +1,6 @@
 import eWelink, {Device, DeviceState, LoginInfo} from "ewelink-api"
 import {Logging} from "homebridge/lib/logger";
-import {handleWebSocketMessage} from "./ewelink-update-handler";
+import {blockUpdates, handleWebSocketMessage} from "./ewelink-update-handler";
 
 
 interface ConnectionParams {
@@ -71,7 +71,10 @@ export class EwelinkConnection implements Connection {
 
     attemptToggleDevice<T>(deviceId: string): Promise<DeviceState | null> {
         return this.connection()
-            .then( c => c.toggleDevice(deviceId))
+            .then( c => {
+                blockUpdates(deviceId);
+                return c.toggleDevice(deviceId);
+            })
             .catch(this.onFailure("attemptToggleDevice"));
     }
 
