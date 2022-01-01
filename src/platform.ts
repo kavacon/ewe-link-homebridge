@@ -56,8 +56,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
 
         this.accessoryService = new AccessoryService(this.log, this.connection, this.api, hap);
         // Only occurs once all existing accessories have been loaded
-        this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(config.real_time_tolerance_window,
-            config.real_time_update));
+        this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(config.real_time_update, config.real_time_tolerance_window,));
         this.api.on(APIEvent.SHUTDOWN, () => this.shutdown())
     }
 

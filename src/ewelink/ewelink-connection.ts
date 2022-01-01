@@ -1,6 +1,6 @@
 import eWelink, {Device, DeviceState, LoginInfo} from "ewelink-api"
 import {Logging} from "homebridge/lib/logger";
-import {blockUpdates, handleWebSocketMessage} from "./ewelink-update-handler";
+import {EwelinkUpdateHandler} from "./ewelink-update-handler";
 
 
 interface ConnectionParams {
@@ -36,11 +36,13 @@ export class EwelinkConnection implements Connection {
     private socket: any;
     private accessToken: string = "";
     private region: string = "";
+    private readonly updateHandler: EwelinkUpdateHandler;
 
     constructor(props: ConnectionParams, logger: Logging) {
         this.params = props;
         this._connection = new eWelink(this.params);
         this.logger = logger
+        this.updateHandler = new EwelinkUpdateHandler(logger);
     }
 
     activateConnection<T>(onSuccess: (auth: any) => void): Promise<any> {
@@ -72,7 +74,7 @@ export class EwelinkConnection implements Connection {
     attemptToggleDevice<T>(deviceId: string): Promise<DeviceState | null> {
         return this.connection()
             .then( c => {
-                blockUpdates(deviceId);
+                this.updateHandler.blockUpdates(deviceId);
                 return c.toggleDevice(deviceId);
             })
             .catch(this.onFailure("attemptToggleDevice"));
@@ -81,7 +83,7 @@ export class EwelinkConnection implements Connection {
     openMonitoringSocket(toleranceWindow: number, onChange: (deviceId: string, state: string) => void) {
         return this.connection()
             .then(c =>
-                c.openWebSocket(data => handleWebSocketMessage(this.logger, toleranceWindow, data, onChange))
+                c.openWebSocket(data => this.updateHandler.handleWebSocketMessage(toleranceWindow, data, onChange))
                     .then(socket => {
                         this.logger.info("Web socket for state monitoring successfully opened");
                         this.socket = socket;
