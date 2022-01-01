@@ -34,6 +34,12 @@
         "type": "boolean",
         "required": false,
         "default": false
+      },
+      "real_time_tolerance_window": {
+        "title": "window in seconds for how long to wait before applying a real time update",
+        "type": "number",
+        "required": false,
+        "default": 5
       }
     }
   }
