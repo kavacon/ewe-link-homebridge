@@ -58,6 +58,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         // Only occurs once all existing accessories have been loaded
         this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(config.real_time_tolerance_window,
             config.real_time_update));
+        this.api.on(APIEvent.SHUTDOWN, () => this.shutdown())
     }
 
     private apiDidFinishLaunching(enableWebSocket: boolean, webSocketToleranceWindow: number){
@@ -86,6 +87,10 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
             .finally(() => this.log.info("Accessory and connection setup completed, check earlier logs for any errors"))
 
 
+    }
+
+    private shutdown() {
+        this.connection.closeMonitoringSocket();
     }
 
     private sortAccessoryInformation(infoArray: AccessoryInformation[] | null): { new: AccessoryInformation[], existing: AccessoryInformation[], deletions: string[] } {

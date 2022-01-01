@@ -20,7 +20,7 @@ interface Connection {
 
     requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | null>
 
-    openMonitoringSocket(oleranceWindow: number, onChange: (deviceId: string, state: string) => void)
+    openMonitoringSocket(toleranceWindow: number, onChange: (deviceId: string, state: string) => void)
 
     attemptToggleDevice<T>(deviceId: string): Promise<DeviceState | null>
 }
@@ -87,7 +87,7 @@ export class EwelinkConnection implements Connection {
     }
 
     closeMonitoringSocket(){
-        this.socket.close();
+        this.socket?.close();
     }
 
     private onFailure(method: string){
