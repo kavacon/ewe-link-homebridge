@@ -19,7 +19,7 @@ import {
     PlatformConfig,
 } from "homebridge";
 
-import {EwelinkConnection} from "./ewelink-connection"
+import {EwelinkConnection} from "./ewelink/ewelink-connection"
 import {EweLinkContext} from "./context";
 import {AccessoryInformation, mapDevicesToAccessoryInformation} from "./accessory/accessory-mapper";
 import {AccessoryService} from "./accessory/accessory-service";
@@ -56,10 +56,11 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
 
         this.accessoryService = new AccessoryService(this.log, this.connection, this.api, hap);
         // Only occurs once all existing accessories have been loaded
-        this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(config.real_time_update))
+        this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(config.real_time_tolerance_window,
+            config.real_time_update));
     }
 
-    private apiDidFinishLaunching(enableWebSocket: boolean){
+    private apiDidFinishLaunching(enableWebSocket: boolean, webSocketToleranceWindow: number){
         this.log.info("apiDidFinishLaunching callback activating");
 
         //log in to ewelink
@@ -76,9 +77,10 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
             //bulk add all new accessories
             .then(this.processAccessoryInformation.bind(this));
 
-         if (enableWebSocket) {
-             connectionPromise = connectionPromise.then(() => this.connection.openMonitoringSocket(this.accessoryService.updateAccessoryState))
-         }
+        if (enableWebSocket) {
+            connectionPromise = connectionPromise.then(() => this.connection.openMonitoringSocket(webSocketToleranceWindow,
+                this.accessoryService.updateAccessoryState));
+        }
 
          connectionPromise.catch( reason => this.log.error("Upstream error: [%s]", reason))
             .finally(() => this.log.info("Accessory and connection setup completed, check earlier logs for any errors"))

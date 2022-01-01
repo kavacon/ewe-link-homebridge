@@ -1,4 +1,4 @@
-import {EwelinkConnection} from "../ewelink-connection";
+import {EwelinkConnection} from "../ewelink/ewelink-connection";
 import {HAP} from "homebridge";
 import {readdirSync} from "fs";
 import {AbstractServiceUtility} from "./service-utility/service-utility";

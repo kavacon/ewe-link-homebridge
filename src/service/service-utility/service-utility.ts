@@ -11,7 +11,7 @@ import {
 } from "hap-nodejs";
 import {Logging} from "homebridge/lib/logger";
 import {PlatformAccessory, PlatformAccessoryEvent} from "homebridge/lib/platformAccessory";
-import {EwelinkConnection} from "../../ewelink-connection";
+import {EwelinkConnection} from "../../ewelink/ewelink-connection";
 import {EweLinkContext} from "../../context";
 import {HAP} from "homebridge";
 import {checkNotNull} from "../../util";

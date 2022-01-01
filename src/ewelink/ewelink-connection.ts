@@ -1,5 +1,6 @@
 import eWelink, {Device, DeviceState, LoginInfo} from "ewelink-api"
 import {Logging} from "homebridge/lib/logger";
+import {handleWebSocketMessage} from "./ewelink-update-handler";
 
 
 interface ConnectionParams {
@@ -19,7 +20,7 @@ interface Connection {
 
     requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | null>
 
-    openMonitoringSocket(onChange: (deviceId: string, state: string) => void)
+    openMonitoringSocket(oleranceWindow: number, onChange: (deviceId: string, state: string) => void)
 
     attemptToggleDevice<T>(deviceId: string): Promise<DeviceState | null>
 }
@@ -74,10 +75,10 @@ export class EwelinkConnection implements Connection {
             .catch(this.onFailure("attemptToggleDevice"));
     }
 
-    openMonitoringSocket(onChange: (deviceId: string, state: string) => void) {
+    openMonitoringSocket(toleranceWindow: number, onChange: (deviceId: string, state: string) => void) {
         return this.connection()
             .then(c =>
-                c.openWebSocket(data => this.delegateWebSocketMessage(data, onChange))
+                c.openWebSocket(data => handleWebSocketMessage(this.logger, toleranceWindow, data, onChange))
                     .then(socket => {
                         this.logger.info("Web socket for state monitoring successfully opened");
                         this.socket = socket;
@@ -87,15 +88,6 @@ export class EwelinkConnection implements Connection {
 
     closeMonitoringSocket(){
         this.socket.close();
-    }
-
-    private delegateWebSocketMessage(data, onChange: (deviceId: string, state: string) => void) {
-        if (data.action === "update") {
-            this.logger.info("Web socket update received: %s", JSON.stringify(data, null, 4))
-            onChange(data.deviceid, data.params.switch)
-        } else if (data.error > 0) {
-            this.logger.error("Error code in websocket: %s", data.error)
-        }
     }
 
     private onFailure(method: string){

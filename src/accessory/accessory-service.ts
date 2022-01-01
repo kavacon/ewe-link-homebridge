@@ -4,7 +4,7 @@ import {EweLinkContext} from "../context";
 import {Characteristic, Service} from "hap-nodejs";
 import {API, HAP, Logging} from "homebridge";
 import {ServiceMap} from "../service/service-map";
-import {EwelinkConnection} from "../ewelink-connection";
+import {EwelinkConnection} from "../ewelink/ewelink-connection";
 
 export class AccessoryService {
     private readonly accessories: Map<string, PlatformAccessory<EweLinkContext>> = new Map();
