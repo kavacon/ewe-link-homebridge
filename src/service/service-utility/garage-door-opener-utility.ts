@@ -36,10 +36,7 @@ export default class GarageDoorOpenerUtility extends AbstractServiceUtility {
     }
 
     updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue) {
-        this.log.info("update accessory states")
-        const currentDoorState = targetState === this.hap.Characteristic.CurrentDoorState.OPEN
-            ? this.hap.Characteristic.CurrentDoorState.OPENING
-            : this.hap.Characteristic.CurrentDoorState.CLOSING;
+        const currentDoorState = this.calculateCurrentState(targetState);
         accessory.getService(this.hap.Service.GarageDoorOpener)?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, currentDoorState);
         this.server.attemptToggleDevice(accessory.context.deviceId).then(deviceState => {
             checkNotNull(deviceState)
@@ -67,8 +64,21 @@ export default class GarageDoorOpenerUtility extends AbstractServiceUtility {
         return accessory.getService(this.hap.Service.GarageDoorOpener)?.getCharacteristic(char)!;
     }
 
-    setCharacteristic(accessory: PlatformAccessory<EweLinkContext>, char: WithUUID<{ new(): Characteristic }>, serverState: string) {
+    setCharacteristic(accessory: PlatformAccessory<EweLinkContext>, char: WithUUID<{ new(): Characteristic }>, serverState: string): Service {
         const homebridgeState = this.translateServerState(serverState, char);
-        return accessory.getService(this.hap.Service.GarageDoorOpener)!.setCharacteristic(char, homebridgeState);
+        const currentDoorState = this.calculateCurrentState(homebridgeState);
+        if (char != this.hap.Characteristic.TargetDoorState) {
+            throw new Error("set action requested on readonly characteristic, can only explicitly set TargetDoorState");
+        }
+        const service = accessory.getService(this.hap.Service.GarageDoorOpener)!.setCharacteristic(char, homebridgeState)
+            .setCharacteristic(this.hap.Characteristic.CurrentDoorState, currentDoorState);
+        setTimeout(() => service.setCharacteristic(this.hap.Characteristic.CurrentDoorState, homebridgeState), 20000);
+        return service;
+    }
+
+    private calculateCurrentState(targetState: CharacteristicValue): number {
+        return targetState === this.hap.Characteristic.CurrentDoorState.OPEN
+            ? this.hap.Characteristic.CurrentDoorState.OPENING
+            : this.hap.Characteristic.CurrentDoorState.CLOSING;
     }
 }
