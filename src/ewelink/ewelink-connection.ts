@@ -1,6 +1,6 @@
 import eWelink, {Device, DeviceState, LoginInfo} from "ewelink-api"
 import {Logging} from "homebridge/lib/logger";
-import {EwelinkUpdateHandler} from "./ewelink-update-handler";
+import {Queue} from "../queue/queue";
 
 
 interface ConnectionParams {
@@ -20,9 +20,9 @@ interface Connection {
 
     requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | null>
 
-    openMonitoringSocket(toleranceWindow: number, onChange: (deviceId: string, state: string) => void)
+    openMonitoringSocket();
 
-    attemptToggleDevice<T>(deviceId: string): Promise<DeviceState | null>
+    attemptSetDeviceState<T>(deviceId: string, state: string): Promise<DeviceState | null>
 }
 
 /**
@@ -36,13 +36,13 @@ export class EwelinkConnection implements Connection {
     private socket: any;
     private accessToken: string = "";
     private region: string = "";
-    private readonly updateHandler: EwelinkUpdateHandler;
+    private readonly queue: Queue;
 
-    constructor(props: ConnectionParams, logger: Logging) {
+    constructor(props: ConnectionParams, logger: Logging, queue: Queue) {
         this.params = props;
         this._connection = new eWelink(this.params);
         this.logger = logger
-        this.updateHandler = new EwelinkUpdateHandler(logger);
+        this.queue = queue;
     }
 
     activateConnection<T>(onSuccess: (auth: any) => void): Promise<any> {
@@ -71,19 +71,18 @@ export class EwelinkConnection implements Connection {
     }
 
 
-    attemptToggleDevice<T>(deviceId: string): Promise<DeviceState | null> {
+    attemptSetDeviceState<T>(deviceId: string, state: string): Promise<DeviceState | null> {
         return this.connection()
             .then( c => {
-                this.updateHandler.blockUpdates(deviceId);
-                return c.toggleDevice(deviceId);
+                return c.setDevicePowerState(deviceId, state);
             })
             .catch(this.onFailure("attemptToggleDevice"));
     }
 
-    openMonitoringSocket(toleranceWindow: number, onChange: (deviceId: string, state: string) => void) {
+    openMonitoringSocket() {
         return this.connection()
             .then(c =>
-                c.openWebSocket(data => this.updateHandler.handleWebSocketMessage(toleranceWindow, data, onChange))
+                c.openWebSocket(this.queueMessage.bind(this))
                     .then(socket => {
                         this.logger.info("Web socket for state monitoring successfully opened");
                         this.socket = socket;
@@ -114,6 +113,17 @@ export class EwelinkConnection implements Connection {
                 setTimeout(() => {
                     resolve(this.connection(attempt + 1))
                 }, 10000)
+            })
+        }
+    }
+
+    private queueMessage(data) {
+        if (data.action === "update") {
+            this.queue.push("ewelinkAccessoryUpdate", {
+                message: {
+                    id: data.deviceid,
+                    serverState: data.params.switch
+                }
             })
         }
     }
