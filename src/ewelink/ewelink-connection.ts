@@ -20,7 +20,7 @@ interface Connection {
 
     requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | null>
 
-    openMonitoringSocket();
+    openMonitoringSocket(): Promise<any> ;
 
     attemptSetDeviceState<T>(deviceId: string, state: string): Promise<DeviceState | null>
 }
@@ -48,7 +48,14 @@ export class EwelinkConnection implements Connection {
     activateConnection<T>(onSuccess: (auth: any) => void): Promise<any> {
         // @ts-ignore
         return this._connection.getCredentials()
-            .then(auth => {this.accessToken = auth.at;this.region = auth.region;return auth})
+            .then(auth => {
+                if (auth.error) {
+                    throw new Error(auth)
+                }
+                this.accessToken = auth.at;
+                this.region = auth.region;
+                return auth;
+            })
             .then(onSuccess, this.onFailure("activateConnection"));
     }
 
@@ -79,7 +86,7 @@ export class EwelinkConnection implements Connection {
             .catch(this.onFailure("attemptToggleDevice"));
     }
 
-    openMonitoringSocket() {
+    openMonitoringSocket(): Promise<any> {
         return this.connection()
             .then(c =>
                 c.openWebSocket(this.queueMessage.bind(this))
@@ -97,7 +104,7 @@ export class EwelinkConnection implements Connection {
     private onFailure(method: string){
         return (reason: any) => {
             this.logger.error("The following error was encountered by the eweLink connection " +
-                "while attempting to execute function [%s] %s", method, reason);
+                "while attempting to execute function [%s] %s", method, JSON.stringify(reason));
             return null;
         }
     }

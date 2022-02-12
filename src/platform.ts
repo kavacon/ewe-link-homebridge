@@ -52,7 +52,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         this.log = log;
         this.api = api;
         this.queue = new Queue();
-        this.queueHandler = new QueueHandler(this.queue);
+        this.queueHandler = new QueueHandler(this.log, this.queue);
         this.log.info("Ewelink bridge starting up");
         this.connection = new EwelinkConnection({
                 email: config.email,

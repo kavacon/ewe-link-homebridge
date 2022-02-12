@@ -1,4 +1,4 @@
-import {PlatformAccessory, PlatformAccessoryEvent} from "homebridge/lib/platformAccessory";
+import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {AccessoryInformation} from "./accessory-mapper";
 import {EweLinkContext} from "../context";
 import {Characteristic, Service} from "hap-nodejs";
@@ -6,7 +6,7 @@ import {API, HAP, Logging} from "homebridge";
 import {ServiceMap} from "../service/service-map";
 import {EwelinkConnection} from "../ewelink/ewelink-connection";
 import {deleteFrom} from "../util";
-import {Queue, QueueMessage} from "../queue/queue";
+import {Queue} from "../queue/queue";
 import {TopicHandler} from "../queue/queueHandler";
 
 export interface AccessoryChanged {
@@ -78,7 +78,6 @@ export class AccessoryService implements TopicHandler<AccessoryChanged> {
     }
 
     handleMessage(message: AccessoryChanged) {
-        this.log.info("update accessory")
         const accessory = this.accessories.get(message.id)!;
         const serviceType = this.serviceMap.getServiceType(accessory);
 
