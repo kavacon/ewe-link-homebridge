@@ -25,6 +25,7 @@ import {AccessoryInformation, mapDevicesToAccessoryInformation} from "./accessor
 import {AccessoryService} from "./accessory/accessory-service";
 import {Queue} from "./queue/queue";
 import {QueueHandler} from "./queue/queueHandler";
+import Timeout = NodeJS.Timeout;
 
 const PLUGIN_NAME = "homebridge-ewelink-with-api";
 const PLATFORM_NAME = "EweLink";
@@ -45,6 +46,7 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
     private readonly accessoryService: AccessoryService;
     private readonly queue: Queue;
     private readonly queueHandler: QueueHandler;
+    private lastTimeOut: Timeout | undefined;
 
     constructor(log: Logging, config: PlatformConfig, api: API) {
         this.log = log;
@@ -87,14 +89,18 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
             connectionPromise = connectionPromise.then(() => this.connection.openMonitoringSocket());
         }
 
-         connectionPromise.catch( reason => this.log.error("Upstream error: [%s]", reason))
-            .finally(() => this.log.info("Accessory and connection setup completed, check earlier logs for any errors"))
-
-
+         connectionPromise
+             .then(() => this.kickoffQueueProcessing())
+             .catch( reason => this.log.error("Upstream error: [%s]", reason))
+             .finally(() => this.log.info("Accessory and connection setup completed, check earlier logs for any errors"));
     }
 
     private shutdown() {
         this.connection.closeMonitoringSocket();
+        if (this.lastTimeOut) {
+            clearTimeout(this.lastTimeOut)
+        }
+        this.queueHandler.processQueue();
     }
 
     private sortAccessoryInformation(infoArray: AccessoryInformation[] | null): { new: AccessoryInformation[], existing: AccessoryInformation[], deletions: string[] } {
@@ -126,6 +132,11 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         } else {
             this.queueHandler.registerTopic("internalAccessoryUpdate", this.accessoryService);
         }
+    }
+
+    private kickoffQueueProcessing() {
+        this.queueHandler.processQueue();
+        this.lastTimeOut = setTimeout(() => this.kickoffQueueProcessing(), 5000);
     }
 
     configureAccessory(accessory: PlatformAccessory<EweLinkContext>): void {
