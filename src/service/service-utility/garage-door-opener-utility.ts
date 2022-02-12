@@ -2,7 +2,6 @@ import {Categories, Characteristic, CharacteristicValue, Service, WithUUID} from
 import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {EweLinkContext} from "../../context";
 import {AbstractServiceUtility} from "./service-utility";
-import {checkNotNull} from "../../util";
 
 export default class GarageDoorOpenerUtility extends AbstractServiceUtility {
 
@@ -35,20 +34,10 @@ export default class GarageDoorOpenerUtility extends AbstractServiceUtility {
         throw new Error("unknown translation for garage characteristic");
     }
 
-    updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue) {
-        const currentDoorState = this.calculateCurrentState(targetState);
-        accessory.getService(this.hap.Service.GarageDoorOpener)?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, currentDoorState);
-        this.server.attemptToggleDevice(accessory.context.deviceId).then(deviceState => {
-            checkNotNull(deviceState)
-            // build in delay to account for speed of door
-            setTimeout(() => accessory.getService(this.hap.Service.GarageDoorOpener)
-                ?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, targetState), 20000);
-        }).catch((error) => {
-            this.log.error("Error experienced when attempting to toggle accessory [%s] state", accessory.displayName);
-            accessory.getService(this.hap.Service.GarageDoorOpener)
-                ?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, this.hap.Characteristic.CurrentDoorState.STOPPED);
-            throw error;
-        })
+    setErrorState(accessory: PlatformAccessory<EweLinkContext>) {
+        this.log.error("Error experienced when attempting to toggle accessory [%s] state", accessory.displayName);
+        accessory.getService(this.hap.Service.GarageDoorOpener)
+            ?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, this.hap.Characteristic.CurrentDoorState.STOPPED);
     }
 
     configure(accessory: PlatformAccessory<EweLinkContext>) {

@@ -26,13 +26,8 @@ export default class SwitchUtility extends AbstractServiceUtility {
         return deviceState === "on" ? 1 : 0;
     }
 
-    updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue) {
-        this.server.attemptToggleDevice(accessory.context.deviceId).then(_ => {
-            accessory.getService(this.hap.Service.Switch)?.setCharacteristic(this.hap.Characteristic.On, targetState);
-        }).catch((error) => {
-            this.log.error("Error experienced when attempting to toggle accessory [%s] state", accessory.displayName);
-            throw error;
-        })
+    setErrorState(accessory: PlatformAccessory<EweLinkContext>) {
+        accessory.getService(this.hap.Service.Switch)?.setCharacteristic(this.hap.Characteristic.On, 0);
     }
 
     configure(accessory: PlatformAccessory<EweLinkContext>) {

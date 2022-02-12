@@ -15,6 +15,7 @@ import {EwelinkConnection} from "../../ewelink/ewelink-connection";
 import {EweLinkContext} from "../../context";
 import {HAP} from "homebridge";
 import {checkNotNull} from "../../util";
+import {Queue, UndefinedQueueTopicError} from "../../queue/queue";
 
 interface ServiceUtility {
     /**
@@ -36,12 +37,10 @@ interface ServiceUtility {
     setServerState(callback: CharacteristicSetCallback, accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue)
 
     /**
-     * Update homebridge characteristics to align with the requested state
-     * @param accessory the updated accessory
-     * @param targetState the new state
-     * @return {Promise<void>}
+     * Update homebridge characteristics to an error state for the accessory.
+     * @param accessory the accessory with an error
      */
-    updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue)
+    setErrorState(accessory: PlatformAccessory<EweLinkContext>);
 
     /**
      * Get the server state of the accessory for homebridge
@@ -110,22 +109,24 @@ export abstract class AbstractServiceUtility implements ServiceUtility {
     protected readonly log: Logging;
     protected readonly hap: HAP;
     protected readonly server: EwelinkConnection;
+    protected readonly queue: Queue;
 
-    constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
+    constructor(server: EwelinkConnection, log: Logging, hap: HAP, queue: Queue) {
         this.log = log;
         this.server = server;
         this.hap = hap;
+        this.queue = queue;
     }
 
     abstract getServiceTag(): string;
 
     abstract getServiceCategory(): Categories
 
-    abstract updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue);
-
     abstract translateHomebridgeState(targetState: CharacteristicValue): string;
 
     abstract translateServerState(deviceState: string, targetCharacteristic: WithUUID<{ new(): Characteristic }>): CharacteristicValue;
+
+    abstract setErrorState(accessory: PlatformAccessory<EweLinkContext>);
 
     abstract configure(accessory: PlatformAccessory<EweLinkContext>);
 
@@ -144,7 +145,7 @@ export abstract class AbstractServiceUtility implements ServiceUtility {
             .then(deviceState => {
                 deviceState = checkNotNull(deviceState);
                 if (!deviceState.error && deviceState.state) {
-                    this.log.info("Device state successfuly retrieved");
+                    this.log.info("Device state successfully retrieved");
                     this.log.info("Device [%s] is in state [%s]", accessory.displayName, deviceState.state);
                     callback(HAPStatus.SUCCESS, this.translateServerState(deviceState.state, char));
                 } else {
@@ -176,7 +177,13 @@ export abstract class AbstractServiceUtility implements ServiceUtility {
                 if (!deviceState.error && deviceState.state) {
                     if (deviceState.state != targetServerState) {
                         this.log.info("Device not in requested state, updating");
-                        this.updateAccessoryStates(accessory, targetState)
+                        this.server.attemptSetDeviceState(accessory.context.deviceId, targetServerState).then(deviceState => {
+                            checkNotNull(deviceState)
+                            this.maybeQueueUpdate(accessory, targetServerState);
+                        }).catch((error) => {
+                            this.setErrorState(accessory);
+                            throw error;
+                        })
                     } else {
                         this.log.warn("Device [%s] already in requested state", accessory.displayName)
                     }
@@ -204,6 +211,23 @@ export abstract class AbstractServiceUtility implements ServiceUtility {
         this.getCharacteristic(accessory, char)
             .on(CharacteristicEventTypes.SET, (targetState, callback) => this.setServerState(callback, accessory, targetState));
 
+    }
+
+    maybeQueueUpdate(accessory: PlatformAccessory<EweLinkContext>, serverState: string) {
+        try {
+            this.queue.push("internalAccessoryUpdate", {
+                message: {
+                    id: accessory.context.deviceId,
+                    serverState
+                }
+            });
+        } catch (e) {
+            if (e instanceof UndefinedQueueTopicError) {
+                this.log.error("tried to push internal update but topic closed", e)
+            } else {
+                throw e;
+            }
+        }
     }
 }
 

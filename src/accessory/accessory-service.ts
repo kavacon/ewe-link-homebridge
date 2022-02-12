@@ -6,19 +6,26 @@ import {API, HAP, Logging} from "homebridge";
 import {ServiceMap} from "../service/service-map";
 import {EwelinkConnection} from "../ewelink/ewelink-connection";
 import {deleteFrom} from "../util";
+import {Queue, QueueMessage} from "../queue/queue";
+import {TopicHandler} from "../queue/queueHandler";
 
-export class AccessoryService {
+export interface AccessoryChanged {
+    id: string;
+    serverState: string;
+}
+
+export class AccessoryService implements TopicHandler<AccessoryChanged> {
     private readonly accessories: Map<string, PlatformAccessory<EweLinkContext>> = new Map();
     private readonly log: Logging;
     private readonly hap: HAP
     private readonly api: API
     private readonly serviceMap: ServiceMap
 
-    constructor(log: Logging, server: EwelinkConnection, api: API, hap: HAP) {
+    constructor(log: Logging, server: EwelinkConnection, api: API, hap: HAP, queue: Queue) {
         this.log = log;
         this.hap = hap;
         this.api = api;
-        this.serviceMap = new ServiceMap(log, server, hap);
+        this.serviceMap = new ServiceMap(log, server, hap, queue);
     }
 
     configureIdentify(accessory: PlatformAccessory<EweLinkContext>) {
@@ -70,15 +77,15 @@ export class AccessoryService {
             .setCharacteristic(Characteristic.FirmwareRevision, information.firmwareRevision);
     }
 
-    updateAccessoryState(id: string, state: string) {
+    handleMessage(message: AccessoryChanged) {
         this.log.info("update accessory")
-        const accessory = this.accessories.get(id)!;
+        const accessory = this.accessories.get(message.id)!;
         const serviceType = this.serviceMap.getServiceType(accessory);
 
         serviceType.getEditableCharacteristics().forEach(char => {
             this.log.info("Updating [%s] for accessory [%s] to [%s]", char.UUID,
-                accessory.displayName, state);
-            serviceType.setCharacteristic(accessory, char, state);
+                accessory.displayName, message.serverState);
+            serviceType.setCharacteristic(accessory, char, message.serverState);
         })
     }
 
