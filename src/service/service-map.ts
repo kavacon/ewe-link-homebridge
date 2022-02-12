@@ -1,4 +1,4 @@
-import {EwelinkConnection} from "../ewelink-connection";
+import {EwelinkConnection} from "../ewelink/ewelink-connection";
 import {HAP} from "homebridge";
 import {readdirSync} from "fs";
 import {AbstractServiceUtility} from "./service-utility/service-utility";
@@ -7,21 +7,22 @@ import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {EweLinkContext} from "../context";
 import SwitchUtility from "./service-utility/switch-utility";
 import GarageDoorOpenerUtility from "./service-utility/garage-door-opener-utility";
+import {Queue} from "../queue/queue";
 
 export class ServiceMap {
     private readonly serviceTypeMap: Map<string, AbstractServiceUtility> = new Map<string, AbstractServiceUtility>();
     private readonly defaultUpdater: AbstractServiceUtility;
     private readonly log: Logging;
 
-    constructor(log: Logging, server: EwelinkConnection, hap: HAP) {
+    constructor(log: Logging, server: EwelinkConnection, hap: HAP, queue: Queue) {
         this.log = log;
-        this.defaultUpdater = new SwitchUtility(server, log, hap);
-        this.fillServiceMap(log, server, hap);
+        this.defaultUpdater = new SwitchUtility(server, log, hap, queue);
+        this.fillServiceMap(log, server, hap, queue);
     }
 
-    private async fillServiceMap(log: Logging, server: EwelinkConnection, hap: HAP) {
-        const garageDoorUtility = new GarageDoorOpenerUtility(server, log, hap);
-        const switchUtility = new SwitchUtility(server, log, hap);
+    private async fillServiceMap(log: Logging, server: EwelinkConnection, hap: HAP, queue: Queue) {
+        const garageDoorUtility = new GarageDoorOpenerUtility(server, log, hap, queue);
+        const switchUtility = new SwitchUtility(server, log, hap, queue);
 
         this.serviceTypeMap.set(garageDoorUtility.getServiceTag(), garageDoorUtility);
         this.serviceTypeMap.set(switchUtility.getServiceTag(), switchUtility);

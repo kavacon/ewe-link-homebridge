@@ -1,5 +1,6 @@
 import eWelink, {Device, DeviceState, LoginInfo} from "ewelink-api"
 import {Logging} from "homebridge/lib/logger";
+import {Queue} from "../queue/queue";
 
 
 interface ConnectionParams {
@@ -19,9 +20,9 @@ interface Connection {
 
     requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | null>
 
-    openMonitoringSocket(onChange: (deviceId: string, state: string) => void)
+    openMonitoringSocket(): Promise<any> ;
 
-    attemptToggleDevice<T>(deviceId: string): Promise<DeviceState | null>
+    attemptSetDeviceState<T>(deviceId: string, state: string): Promise<DeviceState | null>
 }
 
 /**
@@ -35,17 +36,26 @@ export class EwelinkConnection implements Connection {
     private socket: any;
     private accessToken: string = "";
     private region: string = "";
+    private readonly queue: Queue;
 
-    constructor(props: ConnectionParams, logger: Logging) {
+    constructor(props: ConnectionParams, logger: Logging, queue: Queue) {
         this.params = props;
         this._connection = new eWelink(this.params);
         this.logger = logger
+        this.queue = queue;
     }
 
     activateConnection<T>(onSuccess: (auth: any) => void): Promise<any> {
         // @ts-ignore
         return this._connection.getCredentials()
-            .then(auth => {this.accessToken = auth.at;this.region = auth.region;return auth})
+            .then(auth => {
+                if (auth.error) {
+                    throw new Error(auth)
+                }
+                this.accessToken = auth.at;
+                this.region = auth.region;
+                return auth;
+            })
             .then(onSuccess, this.onFailure("activateConnection"));
     }
 
@@ -68,16 +78,18 @@ export class EwelinkConnection implements Connection {
     }
 
 
-    attemptToggleDevice<T>(deviceId: string): Promise<DeviceState | null> {
+    attemptSetDeviceState<T>(deviceId: string, state: string): Promise<DeviceState | null> {
         return this.connection()
-            .then( c => c.toggleDevice(deviceId))
+            .then( c => {
+                return c.setDevicePowerState(deviceId, state);
+            })
             .catch(this.onFailure("attemptToggleDevice"));
     }
 
-    openMonitoringSocket(onChange: (deviceId: string, state: string) => void) {
+    openMonitoringSocket(): Promise<any> {
         return this.connection()
             .then(c =>
-                c.openWebSocket(data => this.delegateWebSocketMessage(data, onChange))
+                c.openWebSocket(this.queueMessage.bind(this))
                     .then(socket => {
                         this.logger.info("Web socket for state monitoring successfully opened");
                         this.socket = socket;
@@ -86,22 +98,13 @@ export class EwelinkConnection implements Connection {
     }
 
     closeMonitoringSocket(){
-        this.socket.close();
-    }
-
-    private delegateWebSocketMessage(data, onChange: (deviceId: string, state: string) => void) {
-        if (data.action === "update") {
-            this.logger.info("Web socket update received: %s", JSON.stringify(data, null, 4))
-            onChange(data.deviceid, data.params.switch)
-        } else if (data.error > 0) {
-            this.logger.error("Error code in websocket: %s", data.error)
-        }
+        this.socket?.close();
     }
 
     private onFailure(method: string){
         return (reason: any) => {
             this.logger.error("The following error was encountered by the eweLink connection " +
-                "while attempting to execute function [%s] %s", method, reason);
+                "while attempting to execute function [%s] %s", method, JSON.stringify(reason));
             return null;
         }
     }
@@ -117,6 +120,17 @@ export class EwelinkConnection implements Connection {
                 setTimeout(() => {
                     resolve(this.connection(attempt + 1))
                 }, 10000)
+            })
+        }
+    }
+
+    private queueMessage(data) {
+        if (data.action === "update") {
+            this.queue.push("ewelinkAccessoryUpdate", {
+                message: {
+                    id: data.deviceid,
+                    serverState: data.params.switch
+                }
             })
         }
     }

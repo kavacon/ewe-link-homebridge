@@ -2,7 +2,6 @@ import {Categories, Characteristic, CharacteristicValue, Service, WithUUID} from
 import {PlatformAccessory} from "homebridge/lib/platformAccessory";
 import {EweLinkContext} from "../../context";
 import {AbstractServiceUtility} from "./service-utility";
-import {checkNotNull} from "../../util";
 
 export default class GarageDoorOpenerUtility extends AbstractServiceUtility {
 
@@ -35,23 +34,10 @@ export default class GarageDoorOpenerUtility extends AbstractServiceUtility {
         throw new Error("unknown translation for garage characteristic");
     }
 
-    updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue) {
-        this.log.info("update accessory states")
-        const currentDoorState = targetState === this.hap.Characteristic.CurrentDoorState.OPEN
-            ? this.hap.Characteristic.CurrentDoorState.OPENING
-            : this.hap.Characteristic.CurrentDoorState.CLOSING;
-        accessory.getService(this.hap.Service.GarageDoorOpener)?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, currentDoorState);
-        this.server.attemptToggleDevice(accessory.context.deviceId).then(deviceState => {
-            checkNotNull(deviceState)
-            // build in delay to account for speed of door
-            setTimeout(() => accessory.getService(this.hap.Service.GarageDoorOpener)
-                ?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, targetState), 20000);
-        }).catch((error) => {
-            this.log.error("Error experienced when attempting to toggle accessory [%s] state", accessory.displayName);
-            accessory.getService(this.hap.Service.GarageDoorOpener)
-                ?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, this.hap.Characteristic.CurrentDoorState.STOPPED);
-            throw error;
-        })
+    setErrorState(accessory: PlatformAccessory<EweLinkContext>) {
+        this.log.error("Error experienced when attempting to toggle accessory [%s] state", accessory.displayName);
+        accessory.getService(this.hap.Service.GarageDoorOpener)
+            ?.setCharacteristic(this.hap.Characteristic.CurrentDoorState, this.hap.Characteristic.CurrentDoorState.STOPPED);
     }
 
     configure(accessory: PlatformAccessory<EweLinkContext>) {
@@ -67,8 +53,21 @@ export default class GarageDoorOpenerUtility extends AbstractServiceUtility {
         return accessory.getService(this.hap.Service.GarageDoorOpener)?.getCharacteristic(char)!;
     }
 
-    setCharacteristic(accessory: PlatformAccessory<EweLinkContext>, char: WithUUID<{ new(): Characteristic }>, serverState: string) {
+    setCharacteristic(accessory: PlatformAccessory<EweLinkContext>, char: WithUUID<{ new(): Characteristic }>, serverState: string): Service {
         const homebridgeState = this.translateServerState(serverState, char);
-        return accessory.getService(this.hap.Service.GarageDoorOpener)!.setCharacteristic(char, homebridgeState);
+        const currentDoorState = this.calculateCurrentState(homebridgeState);
+        if (char != this.hap.Characteristic.TargetDoorState) {
+            throw new Error("set action requested on readonly characteristic, can only explicitly set TargetDoorState");
+        }
+        const service = accessory.getService(this.hap.Service.GarageDoorOpener)!.setCharacteristic(char, homebridgeState)
+            .setCharacteristic(this.hap.Characteristic.CurrentDoorState, currentDoorState);
+        setTimeout(() => service.setCharacteristic(this.hap.Characteristic.CurrentDoorState, homebridgeState), 20000);
+        return service;
+    }
+
+    private calculateCurrentState(targetState: CharacteristicValue): number {
+        return targetState === this.hap.Characteristic.CurrentDoorState.OPEN
+            ? this.hap.Characteristic.CurrentDoorState.OPENING
+            : this.hap.Characteristic.CurrentDoorState.CLOSING;
     }
 }

@@ -11,10 +11,11 @@ import {
 } from "hap-nodejs";
 import {Logging} from "homebridge/lib/logger";
 import {PlatformAccessory, PlatformAccessoryEvent} from "homebridge/lib/platformAccessory";
-import {EwelinkConnection} from "../../ewelink-connection";
+import {EwelinkConnection} from "../../ewelink/ewelink-connection";
 import {EweLinkContext} from "../../context";
 import {HAP} from "homebridge";
 import {checkNotNull} from "../../util";
+import {Queue, UndefinedQueueTopicError} from "../../queue/queue";
 
 interface ServiceUtility {
     /**
@@ -22,6 +23,9 @@ interface ServiceUtility {
      */
     getServiceTag(): string
 
+    /**
+     * @return the homebridge category that matches this service
+     */
     getServiceCategory(): Categories
 
     /**
@@ -33,12 +37,10 @@ interface ServiceUtility {
     setServerState(callback: CharacteristicSetCallback, accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue)
 
     /**
-     * Update homebridge characteristics to align with the requested state
-     * @param accessory the updated accessory
-     * @param targetState the new state
-     * @return {Promise<void>}
+     * Update homebridge characteristics to an error state for the accessory.
+     * @param accessory the accessory with an error
      */
-    updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue)
+    setErrorState(accessory: PlatformAccessory<EweLinkContext>);
 
     /**
      * Get the server state of the accessory for homebridge
@@ -80,10 +82,25 @@ interface ServiceUtility {
      */
     configure(accessory: PlatformAccessory<EweLinkContext>)
 
+    /**
+     * @return an array of Characteristics associated with the service that can be explicitly set
+     */
     getEditableCharacteristics(): WithUUID<{ new(): Characteristic }>[]
 
+    /**
+     * Query an accessory to retrieve the implementation of a characteristic
+     * @param accessory the accessory to query
+     * @param char the type of characteristic to retrieve
+     * @return The instantiated characteristic for the accessory
+     */
     getCharacteristic(accessory: PlatformAccessory<EweLinkContext>, char: WithUUID<{ new(): Characteristic }>): Characteristic;
 
+    /**
+     * Set the homebridge state of an accessory charactertistic, should only be called on editable characteristics
+     * @param accessory the accessory to query
+     * @param char the type of characteristic to set
+     * @param value the server state value of the characteristic
+     */
     setCharacteristic(accessory: PlatformAccessory<EweLinkContext>, char: WithUUID<{ new(): Characteristic }>, value: string)
 
 }
@@ -92,22 +109,24 @@ export abstract class AbstractServiceUtility implements ServiceUtility {
     protected readonly log: Logging;
     protected readonly hap: HAP;
     protected readonly server: EwelinkConnection;
+    protected readonly queue: Queue;
 
-    constructor(server: EwelinkConnection, log: Logging, hap: HAP) {
+    constructor(server: EwelinkConnection, log: Logging, hap: HAP, queue: Queue) {
         this.log = log;
         this.server = server;
         this.hap = hap;
+        this.queue = queue;
     }
 
     abstract getServiceTag(): string;
 
     abstract getServiceCategory(): Categories
 
-    abstract updateAccessoryStates(accessory: PlatformAccessory<EweLinkContext>, targetState: CharacteristicValue);
-
     abstract translateHomebridgeState(targetState: CharacteristicValue): string;
 
     abstract translateServerState(deviceState: string, targetCharacteristic: WithUUID<{ new(): Characteristic }>): CharacteristicValue;
+
+    abstract setErrorState(accessory: PlatformAccessory<EweLinkContext>);
 
     abstract configure(accessory: PlatformAccessory<EweLinkContext>);
 
@@ -126,7 +145,7 @@ export abstract class AbstractServiceUtility implements ServiceUtility {
             .then(deviceState => {
                 deviceState = checkNotNull(deviceState);
                 if (!deviceState.error && deviceState.state) {
-                    this.log.info("Device state successfuly retrieved");
+                    this.log.info("Device state successfully retrieved");
                     this.log.info("Device [%s] is in state [%s]", accessory.displayName, deviceState.state);
                     callback(HAPStatus.SUCCESS, this.translateServerState(deviceState.state, char));
                 } else {
@@ -158,7 +177,13 @@ export abstract class AbstractServiceUtility implements ServiceUtility {
                 if (!deviceState.error && deviceState.state) {
                     if (deviceState.state != targetServerState) {
                         this.log.info("Device not in requested state, updating");
-                        this.updateAccessoryStates(accessory, targetState)
+                        this.server.attemptSetDeviceState(accessory.context.deviceId, targetServerState).then(deviceState => {
+                            checkNotNull(deviceState)
+                            this.maybeQueueUpdate(accessory, targetServerState);
+                        }).catch((error) => {
+                            this.setErrorState(accessory);
+                            throw error;
+                        })
                     } else {
                         this.log.warn("Device [%s] already in requested state", accessory.displayName)
                     }
@@ -186,6 +211,23 @@ export abstract class AbstractServiceUtility implements ServiceUtility {
         this.getCharacteristic(accessory, char)
             .on(CharacteristicEventTypes.SET, (targetState, callback) => this.setServerState(callback, accessory, targetState));
 
+    }
+
+    maybeQueueUpdate(accessory: PlatformAccessory<EweLinkContext>, serverState: string) {
+        try {
+            this.queue.push("internalAccessoryUpdate", {
+                message: {
+                    id: accessory.context.deviceId,
+                    serverState
+                }
+            });
+        } catch (e) {
+            if (e instanceof UndefinedQueueTopicError) {
+                this.log.error("tried to push internal update but topic closed", e)
+            } else {
+                throw e;
+            }
+        }
     }
 }
 
