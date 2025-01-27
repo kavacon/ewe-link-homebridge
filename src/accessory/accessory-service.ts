@@ -3,11 +3,12 @@ import {AccessoryInformation} from "./accessory-mapper";
 import {EweLinkContext} from "../context";
 import {Characteristic, Service} from "hap-nodejs";
 import {API, HAP, Logging} from "homebridge";
-import {ServiceMap} from "../service/service-map";
-import {EwelinkConnection} from "../ewelink/ewelink-connection";
+import {ServiceUtilities} from "../service/service-utilities";
+import {RemoteConnection} from "../connection/remote-connection";
 import {deleteFrom} from "../util";
 import {Queue} from "../queue/queue";
 import {TopicHandler} from "../queue/queueHandler";
+import {Connection} from "../connection/connection";
 
 export interface AccessoryChanged {
     id: string;
@@ -19,22 +20,22 @@ export class AccessoryService implements TopicHandler<AccessoryChanged> {
     private readonly log: Logging;
     private readonly hap: HAP
     private readonly api: API
-    private readonly serviceMap: ServiceMap
+    private readonly serviceMap: ServiceUtilities
 
-    constructor(log: Logging, server: EwelinkConnection, api: API, hap: HAP, queue: Queue) {
+    constructor(log: Logging, server: Connection, api: API, hap: HAP, queue: Queue) {
         this.log = log;
         this.hap = hap;
         this.api = api;
-        this.serviceMap = new ServiceMap(log, server, hap, queue);
+        this.serviceMap = new ServiceUtilities(log, server, hap, queue);
     }
 
     configureIdentify(accessory: PlatformAccessory<EweLinkContext>) {
-        const serviceType = this.serviceMap.getServiceType(accessory);
+        const serviceType = this.serviceMap.getServiceUtility(accessory);
         serviceType.setAccessoryOnIdentify(accessory);
     }
 
     configureService(accessory: PlatformAccessory<EweLinkContext>) {
-        const serviceType = this.serviceMap.getServiceType(accessory);
+        const serviceType = this.serviceMap.getServiceUtility(accessory);
         serviceType.configure(accessory);
     }
 
@@ -52,7 +53,7 @@ export class AccessoryService implements TopicHandler<AccessoryChanged> {
     createAccessory(information: AccessoryInformation): PlatformAccessory<EweLinkContext> {
         this.log.info("Found Accessory with Name : [%s], Manufacturer : [%s], API Key: [%s] ",
             information.name, information.manufacturer, information.apiKey);
-        const service = this.serviceMap.calculateServiceType(information.name);
+        const service = this.serviceMap.calculateServiceTag(information.name);
         const uuid = this.hap.uuid.generate(information.id);
         const accessory = new this.api.platformAccessory<EweLinkContext>(information.name, uuid, service.getServiceCategory());
         accessory.context.deviceId = information.id;
@@ -79,7 +80,7 @@ export class AccessoryService implements TopicHandler<AccessoryChanged> {
 
     handleMessage(message: AccessoryChanged) {
         const accessory = this.accessories.get(message.id)!;
-        const serviceType = this.serviceMap.getServiceType(accessory);
+        const serviceType = this.serviceMap.getServiceUtility(accessory);
 
         serviceType.getEditableCharacteristics().forEach(char => {
             this.log.info("Updating [%s] for accessory [%s] to [%s]", char.UUID,

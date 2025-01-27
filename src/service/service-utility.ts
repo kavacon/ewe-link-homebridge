@@ -11,11 +11,12 @@ import {
 } from "hap-nodejs";
 import {Logging} from "homebridge/lib/logger";
 import {PlatformAccessory, PlatformAccessoryEvent} from "homebridge/lib/platformAccessory";
-import {EwelinkConnection} from "../../ewelink/ewelink-connection";
-import {EweLinkContext} from "../../context";
+import {EweLinkContext} from "../context";
 import {HAP} from "homebridge";
-import {checkNotNull} from "../../util";
-import {Queue, UndefinedQueueTopicError} from "../../queue/queue";
+import {checkNotNull} from "../util";
+import {Queue, UndefinedQueueTopicError} from "../queue/queue";
+import {Connection} from "../connection/connection";
+import {Topic} from "../queue/topic";
 
 interface ServiceUtility {
     /**
@@ -108,10 +109,10 @@ interface ServiceUtility {
 export abstract class AbstractServiceUtility implements ServiceUtility {
     protected readonly log: Logging;
     protected readonly hap: HAP;
-    protected readonly server: EwelinkConnection;
+    protected readonly server: Connection;
     protected readonly queue: Queue;
 
-    constructor(server: EwelinkConnection, log: Logging, hap: HAP, queue: Queue) {
+    constructor(server: Connection, log: Logging, hap: HAP, queue: Queue) {
         this.log = log;
         this.server = server;
         this.hap = hap;
@@ -215,7 +216,7 @@ export abstract class AbstractServiceUtility implements ServiceUtility {
 
     maybeQueueUpdate(accessory: PlatformAccessory<EweLinkContext>, serverState: string) {
         try {
-            this.queue.push("internalAccessoryUpdate", {
+            this.queue.push(Topic.PLATFORM_UPDATE, {
                 message: {
                     id: accessory.context.deviceId,
                     serverState
