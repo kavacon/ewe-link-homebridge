@@ -1,4 +1,4 @@
-import eWelink, {Device, DeviceState, LoginInfo} from "ewelink-api"
+import eWelink, {Device, DeviceState} from "ewelink-api"
 import {Logging} from "homebridge/lib/logger";
 import {Queue} from "../queue/queue";
 import {Connection} from "./connection";

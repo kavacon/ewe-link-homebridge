@@ -1,6 +1,4 @@
-import {RemoteConnection} from "../connection/remote-connection";
 import {HAP} from "homebridge";
-import {readdirSync} from "fs";
 import {AbstractServiceUtility} from "./service-utility";
 import {Logging} from "homebridge/lib/logger";
 import {PlatformAccessory} from "homebridge/lib/platformAccessory";

@@ -4,7 +4,6 @@ import {EweLinkContext} from "../context";
 import {Characteristic, Service} from "hap-nodejs";
 import {API, HAP, Logging} from "homebridge";
 import {ServiceUtilities} from "../service/service-utilities";
-import {RemoteConnection} from "../connection/remote-connection";
 import {deleteFrom} from "../util";
 import {Queue} from "../queue/queue";
 import {TopicHandler} from "../queue/queueHandler";
