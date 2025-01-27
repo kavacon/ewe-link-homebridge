@@ -1,5 +1,6 @@
 import {EmptyQueueError, Queue} from "./queue";
 import {Logging} from "homebridge/lib/logger";
+import {Topic} from "./topic";
 
 export interface TopicHandler<T> {
     handleMessage(message: T);
@@ -8,14 +9,14 @@ export interface TopicHandler<T> {
 export class QueueHandler {
     private readonly log: Logging
     private readonly queue: Queue;
-    private readonly topicHandlers: Map<string, TopicHandler<any>> = new Map<string, TopicHandler<any>>();
+    private readonly topicHandlers: Map<Topic, TopicHandler<any>> = new Map<Topic, TopicHandler<any>>();
 
     constructor(log:Logging, queue: Queue) {
         this.log = log;
         this.queue = queue;
     }
 
-    registerTopic<T>(topic: string, handler: TopicHandler<T>) {
+    registerTopic<T>(topic: Topic, handler: TopicHandler<T>) {
         this.log.info("Registered topic: [%s]", topic);
         this.topicHandlers.set(topic, handler);
         this.queue.registerTopic(topic);

@@ -19,13 +19,15 @@ import {
     PlatformConfig,
 } from "homebridge";
 
-import {EwelinkConnection} from "./ewelink/ewelink-connection"
 import {EweLinkContext} from "./context";
 import {AccessoryInformation, mapDevicesToAccessoryInformation} from "./accessory/accessory-mapper";
 import {AccessoryService} from "./accessory/accessory-service";
 import {Queue} from "./queue/queue";
 import {QueueHandler} from "./queue/queueHandler";
 import Timeout = NodeJS.Timeout;
+import {LocalConnection} from "./connection/local-connection";
+import {Connection} from "./connection/connection";
+import {Topic} from "./queue/topic";
 
 const PLUGIN_NAME = "homebridge-ewelink-with-api";
 const PLATFORM_NAME = "EweLink";
@@ -42,7 +44,7 @@ export = (api: API) => {
 class EweLinkPlatform implements DynamicPlatformPlugin {
     private readonly log: Logging;
     private readonly api: API;
-    private readonly connection: EwelinkConnection;
+    private readonly connection: Connection;
     private readonly accessoryService: AccessoryService;
     private readonly queue: Queue;
     private readonly queueHandler: QueueHandler;
@@ -54,17 +56,13 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         this.queue = new Queue();
         this.queueHandler = new QueueHandler(this.log, this.queue);
         this.log.info("Ewelink bridge starting up");
-        this.connection = new EwelinkConnection({
-                email: config.email,
-                password: config.password,
-            },
-            this.log,
-            this.queue
+        this.connection = new LocalConnection(
+            this.log
         );
 
         this.accessoryService = new AccessoryService(this.log, this.connection, this.api, hap, this.queue);
         // Only occurs once all existing accessories have been loaded
-        this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(config.real_time_update));
+        this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(false));
         this.api.on(APIEvent.SHUTDOWN, () => this.shutdown())
     }
 
@@ -128,9 +126,9 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
 
     private registerTopicHandlers(enableWebSocket: boolean) {
         if (enableWebSocket) {
-            this.queueHandler.registerTopic("ewelinkAccessoryUpdate", this.accessoryService);
+            this.queueHandler.registerTopic(Topic.SERVER_UPDATE, this.accessoryService);
         } else {
-            this.queueHandler.registerTopic("internalAccessoryUpdate", this.accessoryService);
+            this.queueHandler.registerTopic(Topic.PLATFORM_UPDATE, this.accessoryService);
         }
     }
 

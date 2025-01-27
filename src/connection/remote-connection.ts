@@ -1,35 +1,19 @@
-import eWelink, {Device, DeviceState, LoginInfo} from "ewelink-api"
+import eWelink, {Device, DeviceState} from "ewelink-api"
 import {Logging} from "homebridge/lib/logger";
 import {Queue} from "../queue/queue";
-
+import {Connection} from "./connection";
+import {Topic} from "../queue/topic";
 
 interface ConnectionParams {
     readonly email: string;
     readonly password: string;
 }
 
-interface Connection {
-    readonly _connection: any;
-    readonly params: ConnectionParams
-
-    activateConnection<T>(onSuccess: (auth: LoginInfo) => T): Promise<T | null>
-
-    requestDevice<T>(deviceId: string, onSuccess: (device: Device) => T): Promise<T | null>
-
-    requestDeviceState<T>(deviceId: string): Promise<DeviceState | null>
-
-    requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | null>
-
-    openMonitoringSocket(): Promise<any> ;
-
-    attemptSetDeviceState<T>(deviceId: string, state: string): Promise<DeviceState | null>
-}
-
 /**
  * Wrapper class for the ewelink connection, allows us to abstract establishing the connection and
  * manage promises effectively, previous version made all async calls await causing uncaught errors
  */
-export class EwelinkConnection implements Connection {
+export class RemoteConnection implements Connection {
     readonly _connection: eWelink;
     readonly params: ConnectionParams;
     readonly logger: Logging;
@@ -126,7 +110,7 @@ export class EwelinkConnection implements Connection {
 
     private queueMessage(data) {
         if (data.action === "update") {
-            this.queue.push("ewelinkAccessoryUpdate", {
+            this.queue.push(Topic.SERVER_UPDATE, {
                 message: {
                     id: data.deviceid,
                     serverState: data.params.switch

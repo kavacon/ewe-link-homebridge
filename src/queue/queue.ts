@@ -1,3 +1,5 @@
+import {Topic} from "./topic";
+
 export interface QueueMessage<T> {
     message: T;
 }
@@ -11,16 +13,16 @@ export class UndefinedQueueTopicError extends Error {
 export class Queue {
     private readonly messages = {}
 
-    registerTopic<V>(topic: string) {
+    registerTopic<V>(topic: Topic) {
         this.messages[topic] = [];
     }
 
-    push<V>(topic: string, message: QueueMessage<V>) {
+    push<V>(topic: Topic, message: QueueMessage<V>) {
         this.checkTopicExists(topic);
         this.messages[topic].push(message)
     }
 
-    pop<V>(topic: string): QueueMessage<V> {
+    pop<V>(topic: Topic): QueueMessage<V> {
         this.checkTopicExists(topic)
         const message = this.messages[topic].pop();
         if (message) {
@@ -29,7 +31,7 @@ export class Queue {
         throw new EmptyQueueError();
     }
 
-    private checkTopicExists(topic: string) {
+    private checkTopicExists(topic: Topic) {
         if (this.messages[topic] === undefined) {
             throw new UndefinedQueueTopicError();
         }

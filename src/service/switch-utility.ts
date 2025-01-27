@@ -1,6 +1,6 @@
 import {Categories, Characteristic, CharacteristicValue, Service, WithUUID} from "hap-nodejs";
 import {PlatformAccessory} from "homebridge/lib/platformAccessory";
-import {EweLinkContext} from "../../context";
+import {EweLinkContext} from "../context";
 import {AbstractServiceUtility} from "./service-utility";
 
 export default class SwitchUtility extends AbstractServiceUtility {
