@@ -1,7 +1,6 @@
 import {Device, DeviceState, LoginInfo} from "ewelink-api";
 
 export interface Connection {
-    readonly _connection: any;
 
     activateConnection<T>(onSuccess: (auth: LoginInfo) => T): Promise<T | null>
 

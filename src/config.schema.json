@@ -11,23 +11,29 @@
         "required": true,
         "default": "EweLink"
       },
-      "email": {
-        "title": "email for Ewelink account",
-        "type": "string",
-        "required": true,
-        "default": ""
-      },
-      "password": {
-        "title": "password for Ewelink account",
-        "type": "string",
-        "required": true,
-        "default": ""
-      },
-      "region": {
-        "title": "region/server location to access ewelink from",
-        "type": "string",
-        "required": true,
-        "default": "cn"
+      "remote_config": {
+        "type": "object",
+        "required": false,
+        "properties": {
+          "email": {
+            "title": "email for Ewelink account",
+            "type": "string",
+            "required": true,
+            "default": ""
+          },
+          "password": {
+            "title": "password for Ewelink account",
+            "type": "string",
+            "required": true,
+            "default": ""
+          },
+          "region": {
+            "title": "region/server location to access ewelink from",
+            "type": "string",
+            "required": true,
+            "default": "cn"
+          }
+        }
       },
       "real_time_update": {
         "title": "flag to enable updates through ewelink websockets",

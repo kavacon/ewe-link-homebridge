@@ -25,9 +25,10 @@ import {AccessoryService} from "./accessory/accessory-service";
 import {Queue} from "./queue/queue";
 import {QueueHandler} from "./queue/queueHandler";
 import Timeout = NodeJS.Timeout;
-import {LocalConnection} from "./connection/local-connection";
 import {Connection} from "./connection/connection";
 import {Topic} from "./queue/topic";
+import {RemoteConnection} from "./connection/remote-connection";
+import {LocalConnection} from "./connection/local-connection";
 
 const PLUGIN_NAME = "homebridge-ewelink-with-api";
 const PLATFORM_NAME = "EweLink";
@@ -56,13 +57,13 @@ class EweLinkPlatform implements DynamicPlatformPlugin {
         this.queue = new Queue();
         this.queueHandler = new QueueHandler(this.log, this.queue);
         this.log.info("Ewelink bridge starting up");
-        this.connection = new LocalConnection(
-            this.log
-        );
+        this.connection = config.remoteConfig ? new RemoteConnection(
+            config.remoteConfig, this.log, this.queue
+        ) : new LocalConnection(this.log);
 
         this.accessoryService = new AccessoryService(this.log, this.connection, this.api, hap, this.queue);
         // Only occurs once all existing accessories have been loaded
-        this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(false));
+        this.api.on(APIEvent.DID_FINISH_LAUNCHING, () => this.apiDidFinishLaunching(config.realTimeUpdate));
         this.api.on(APIEvent.SHUTDOWN, () => this.shutdown())
     }
 

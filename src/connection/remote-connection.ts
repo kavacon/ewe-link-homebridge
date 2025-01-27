@@ -7,6 +7,7 @@ import {Topic} from "../queue/topic";
 interface ConnectionParams {
     readonly email: string;
     readonly password: string;
+    readonly region: string;
 }
 
 /**
@@ -14,7 +15,7 @@ interface ConnectionParams {
  * manage promises effectively, previous version made all async calls await causing uncaught errors
  */
 export class RemoteConnection implements Connection {
-    readonly _connection: eWelink;
+    private readonly _connection: eWelink;
     readonly params: ConnectionParams;
     readonly logger: Logging;
     private socket: any;
@@ -34,7 +35,7 @@ export class RemoteConnection implements Connection {
         return this._connection.getCredentials()
             .then(auth => {
                 if (auth.error) {
-                    throw new Error(auth)
+                    throw new Error(JSON.stringify(auth))
                 }
                 this.accessToken = auth.at;
                 this.region = auth.region;
