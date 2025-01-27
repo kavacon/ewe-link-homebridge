@@ -91,12 +91,12 @@ export class AccessoryService implements TopicHandler<AccessoryChanged> {
     determineExistence(ids: string[]): {notFound: string[], intersection: string[], serviceOnly: string[]} {
         const notFound = new Array<string>();
         const intersection = new Array<string>();
-        const noMatch = Array.from(this.accessories.keys());
+        let noMatch = Array.from(this.accessories.keys());
 
         ids.forEach(id => {
             if (this.accessories.has(id)) {
                 intersection.push(id);
-                deleteFrom(id, noMatch);
+                noMatch = deleteFrom(id, noMatch);
             } else {
                 notFound.push(id);
             }

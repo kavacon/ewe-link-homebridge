@@ -5,7 +5,15 @@ export function checkNotNull<T>(arg: T | undefined | null): T {
     return arg;
 }
 
-export function deleteFrom<T>(value: T, list: Array<T>) {
+export function deleteFrom<T>(value: T, list: Array<T>): Array<T> {
     const idx = list.indexOf(value);
-    list.splice(idx, 1);
+    return list.splice(idx, 1);
+}
+
+export function deleteIf<T>(predicate: (item: T) => boolean, list: Array<T>):  Array<T> {
+    const idx = list.findIndex(predicate);
+    if (idx < 0) {
+        return list;
+    }
+    return list.splice(idx, 1);
 }

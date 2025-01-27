@@ -1,32 +1,55 @@
 import {Connection} from "./connection";
 import {Device, DeviceState} from "ewelink-api";
-import * as DNS from 'node-dns-sd';
+import {Bonjour, Service} from 'bonjour-service';
 import fetch from 'node-fetch';
-import {checkNotNull} from "../util";
+import {checkNotNull, deleteIf} from "../util";
 import {Logging} from "homebridge/lib/logger";
 
 interface LANDevice {
     ip: string;
-    port: string;
+    port: number;
     deviceId: string;
 }
 
 class LANConnection {
-    async findDevices(log: Logging): Promise<LANDevice[]> {
+    private readonly bonjourClient = new Bonjour();
+    private devices: LANDevice[] = []
+    private readonly log: Logging;
+    constructor(log: Logging) {
+        this.log = log;
+    }
+
+    start() {
+        this.log.info("starting lan connection")
+        // name: '_ewelink._tcp.local'
+        const browser = this.bonjourClient.find({type: 'http'}, this.recordDevice.bind(this))
+        browser.services.forEach( this.recordDevice.bind(this));
+    }
+
+    getDevices(): LANDevice[] {
+        return this.devices;
+    }
+    private recordDevice(service: Service) {
         try {
-            log.info("local device discovery:")
-            const devices = await DNS.discover({name: '_ewelink._tcp'})
-            return devices.map(device => {
-                log.info(device);
-                return {
-                    ip: device.address,
-                    port: device.service.port,
-                    deviceId: LANConnection.extractDeviceId(device.fqdn),
-                }
-            })
+            this.log.info("local device discovery: %s", service.fqdn)
+            const device = {
+                ip: service.host,
+                port: service.port,
+                deviceId: LANConnection.extractDeviceId(service.fqdn),
+            }
+            this.devices.push(device)
         } catch (e) {
-            log.error(JSON.stringify(e));
-            return []
+            this.log.error(JSON.stringify(e));
+        }
+    }
+
+    private removeDevice(service: Service) {
+        try {
+            this.log.info("local device removed: %s", service.fqdn)
+            const deviceId = LANConnection.extractDeviceId(service.fqdn)
+            this.devices = deleteIf(d => d.deviceId === deviceId, this.devices)
+        } catch (e) {
+            this.log.error(JSON.stringify(e));
         }
     }
 
@@ -39,15 +62,17 @@ class LANConnection {
 }
 
 export class LocalConnection implements Connection {
-    private readonly lan: LANConnection = new LANConnection();
+    private readonly lan: LANConnection;
     private readonly deviceAddressMap = new Map<string, string>();
     private readonly log: Logging;
 
     constructor(log: Logging) {
         this.log = log;
+        this.lan = new LANConnection(this.log);
     }
 
     activateConnection<T>(onSuccess: (auth: any) => void): Promise<any> {
+        this.lan.start()
         onSuccess(1);
         return Promise.resolve();
     }
@@ -98,8 +123,7 @@ export class LocalConnection implements Connection {
     }
 
     requestDevices<T>(onSuccess: (devices: Device[]) => T): Promise<T | null> {
-        return this.lan
-            .findDevices(this.log)
+        return Promise.resolve(this.lan.getDevices())
             .then(devices => this.refreshDeviceMap(devices))
             .then(devices => this.getDeviceInformation(devices))
             .then(devices => onSuccess(devices))
