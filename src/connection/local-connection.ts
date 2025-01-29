@@ -1,11 +1,10 @@
 import {Connection} from "./connection";
 import {Device, DeviceState} from "ewelink-api";
-import {Bonjour, Service} from 'bonjour-service';
 import fetch from 'node-fetch';
 import {checkNotNull, deleteIf} from "../util";
 import {Logging} from "homebridge/lib/logger";
-import {Scanner, Services} from 'mdns-scanner'
-
+import eweLink from 'ewelink-api-next'
+import * as crypto from "crypto";
 interface LANDevice {
     ip: string;
     port: number;
@@ -13,53 +12,55 @@ interface LANDevice {
 }
 
 class LANConnection {
-    private readonly scanner: Scanner
-    private readonly services: Services
+    private readonly ewelinkLan
     private devices: LANDevice[] = []
     private readonly log: Logging;
+    private readonly apiKey: string
     constructor(log: Logging) {
         this.log = log;
-        this.scanner = new Scanner({ debug: true });
-        this.services = new Services(this.scanner);
+        this.apiKey = crypto.randomBytes(20).toString('hex');
+        this.ewelinkLan = new eweLink.Lan({
+            selfApikey: this.apiKey,
+            logObj: eweLink.createLogger("lan")
+        });
     }
 
     start() {
         this.log.info("starting lan connection")
-        this.services.on('discovery', this.recordDevice.bind(this))
+        this.ewelinkLan.discovery(this.recordDevice.bind(this))
     }
 
     getDevices(): LANDevice[] {
         return this.devices;
     }
-    private recordDevice(event) {
-        if (event.type === 'service') {
-            try {
-                const data = event.data;
-                this.log.info("local device discovery: %s", data.service.name)
-                const device = {
-                    ip: data.rinfo.address,
-                    port: data.port,
-                    deviceId: LANConnection.extractDeviceId(data.service.fqdn),
-                }
-                this.devices.push(device)
-            } catch (e) {
-                this.log.error(JSON.stringify(e));
-            }
-        }
-    }
 
-    private removeDevice(service: Service) {
+    private recordDevice(service) {
         try {
-            this.log.info("local device removed: %s", service.fqdn)
-            const deviceId = LANConnection.extractDeviceId(service.fqdn)
-            this.devices = deleteIf(d => d.deviceId === deviceId, this.devices)
+            this.log.info("local device discovery: %s", service.fqdn)
+            const {ip, port} = this.ewelinkLan.getDeviceIp(service)
+            const device = {
+                ip,
+                port,
+                deviceId: LANConnection.extractDeviceId(service.fqdn),
+            }
+            this.devices.push(device)
         } catch (e) {
             this.log.error(JSON.stringify(e));
         }
     }
 
+    // private removeDevice(service: Service) {
+    //     try {
+    //         this.log.info("local device removed: %s", service.fqdn)
+    //         const deviceId = LANConnection.extractDeviceId(service.fqdn)
+    //         this.devices = deleteIf(d => d.deviceId === deviceId, this.devices)
+    //     } catch (e) {
+    //         this.log.error(JSON.stringify(e));
+    //     }
+    // }
+
     private static extractDeviceId(fqdn: string): string {
-        const regex = 'eWeLink_(.*)_ewelink._tcp.local';
+        const regex = 'eWeLink_(.*).local';
         const deviceId = fqdn.match(regex);
         checkNotNull(deviceId);
         return deviceId?.pop() || '';

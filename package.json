@@ -29,9 +29,8 @@
   "homepage": "https://github.com/kavacon1/ewe-link-homebridge#readme",
   "dependencies": {
     "@types/node-fetch": "^3.0.3",
-    "bonjour-service": "^1.3.0",
     "ewelink-api": "^3.1.1",
-    "mdns-scanner": "^1.2.2",
+    "ewelink-api-next": "^1.0.4",
     "node-dns-sd": "^0.4.2",
     "node-fetch": "^2.6.6"
   },
