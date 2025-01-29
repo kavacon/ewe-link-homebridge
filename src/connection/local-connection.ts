@@ -13,7 +13,13 @@ interface LANDevice {
 
 class LANConnection {
     private readonly ewelinkLan
-    private devices: LANDevice[] = []
+    private devices: LANDevice[] = [
+        {
+            ip: '192.168.68.64',
+            port: 8081,
+            deviceId: '100080fd50',
+        },
+    ]
     private readonly log: Logging;
     private readonly apiKey: string
     constructor(log: Logging) {
