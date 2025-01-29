@@ -3,8 +3,6 @@ import {Device, DeviceState} from "ewelink-api";
 import fetch from 'node-fetch';
 import {checkNotNull, deleteIf} from "../util";
 import {Logging} from "homebridge/lib/logger";
-import eweLink from 'ewelink-api-next'
-import * as crypto from "crypto";
 interface LANDevice {
     ip: string;
     port: number;
@@ -12,7 +10,6 @@ interface LANDevice {
 }
 
 class LANConnection {
-    private readonly ewelinkLan
     private devices: LANDevice[] = [
         {
             ip: '192.168.68.64',
@@ -21,39 +18,32 @@ class LANConnection {
         },
     ]
     private readonly log: Logging;
-    private readonly apiKey: string
     constructor(log: Logging) {
         this.log = log;
-        this.apiKey = crypto.randomBytes(20).toString('hex');
-        this.ewelinkLan = new eweLink.Lan({
-            selfApikey: this.apiKey,
-            logObj: eweLink.createLogger("lan")
-        });
     }
 
     start() {
         this.log.info("starting lan connection")
-        this.ewelinkLan.discovery(this.recordDevice.bind(this))
     }
 
     getDevices(): LANDevice[] {
         return this.devices;
     }
 
-    private recordDevice(service) {
-        try {
-            this.log.info("local device discovery: %s", service.fqdn)
-            const {ip, port} = this.ewelinkLan.getDeviceIp(service)
-            const device = {
-                ip,
-                port,
-                deviceId: LANConnection.extractDeviceId(service.fqdn),
-            }
-            this.devices.push(device)
-        } catch (e) {
-            this.log.error(JSON.stringify(e));
-        }
-    }
+    // private recordDevice(service) {
+    //     try {
+    //         this.log.info("local device discovery: %s", service.fqdn)
+    //         const {ip, port} = this.ewelinkLan.getDeviceIp(service)
+    //         const device = {
+    //             ip,
+    //             port,
+    //             deviceId: LANConnection.extractDeviceId(service.fqdn),
+    //         }
+    //         this.devices.push(device)
+    //     } catch (e) {
+    //         this.log.error(JSON.stringify(e));
+    //     }
+    // }
 
     // private removeDevice(service: Service) {
     //     try {
