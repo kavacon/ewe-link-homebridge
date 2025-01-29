@@ -4,6 +4,7 @@ import {Bonjour, Service} from 'bonjour-service';
 import fetch from 'node-fetch';
 import {checkNotNull, deleteIf} from "../util";
 import {Logging} from "homebridge/lib/logger";
+import {Scanner, Services} from 'mdns-scanner'
 
 interface LANDevice {
     ip: string;
@@ -12,34 +13,38 @@ interface LANDevice {
 }
 
 class LANConnection {
-    private readonly bonjourClient = new Bonjour();
+    private readonly scanner: Scanner
+    private readonly services: Services
     private devices: LANDevice[] = []
     private readonly log: Logging;
     constructor(log: Logging) {
         this.log = log;
+        this.scanner = new Scanner({ debug: true });
+        this.services = new Services(this.scanner);
     }
 
     start() {
         this.log.info("starting lan connection")
-        // name: '_ewelink._tcp.local'
-        const browser = this.bonjourClient.find({type: 'http'}, this.recordDevice.bind(this))
-        browser.services.forEach( this.recordDevice.bind(this));
+        this.services.on('discovery', this.recordDevice.bind(this))
     }
 
     getDevices(): LANDevice[] {
         return this.devices;
     }
-    private recordDevice(service: Service) {
-        try {
-            this.log.info("local device discovery: %s", service.fqdn)
-            const device = {
-                ip: service.host,
-                port: service.port,
-                deviceId: LANConnection.extractDeviceId(service.fqdn),
+    private recordDevice(event) {
+        if (event.type === 'service') {
+            try {
+                const data = event.data;
+                this.log.info("local device discovery: %s", data.service.name)
+                const device = {
+                    ip: data.rinfo.address,
+                    port: data.port,
+                    deviceId: LANConnection.extractDeviceId(data.service.fqdn),
+                }
+                this.devices.push(device)
+            } catch (e) {
+                this.log.error(JSON.stringify(e));
             }
-            this.devices.push(device)
-        } catch (e) {
-            this.log.error(JSON.stringify(e));
         }
     }
 
